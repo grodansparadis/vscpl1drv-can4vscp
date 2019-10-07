@@ -34,5 +34,5 @@ configure:
 
 override_dh_auto_install:
 	strip linux/vscpl1drv-can4vscp.so
-	install -D -m 0755 linux/vscpl1drv-can4vscp.so $$(pwd)/debian/vscpl1drv-can4vscp/usr/bin/vscpl1drv-can4vscp.so
+	install -D -m 0755 linux/vscpl1drv-can4vscp.so $$(pwd)/debian/vscpl1drv-can4vscp/usr/lib/vscpl1drv-can4vscp.so
 #	dh_auto_install --prefix=/usr

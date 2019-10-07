@@ -10,7 +10,10 @@ Vcs-Git: https://github.com/grodansparadis/vscpl1drv-can4vscp.git
 
 Package: vscpl1drv-can4vscp
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libc6-dev
-Description: Level I logger driver for the VSCP daemon
- A driver that can be added to the VSCP server to get logging of level I
- events on a specific file. Filters can be set.
+Depends: ${shlibs:Depends}, ${misc:Depends}, libc6-dev (>= 2.15),
+ libstdc++6 (>= 4.9), libgcc1 (>= 1:4.1.1)
+Description: Level I VSCP serial driver for VSCP & friends
+ This level I driver can be added to the VSCP daemon/VSCP Works,
+ or other tool that can use VSCP Level I drivers, to interface
+ hardware that communicate using the VSCP serial protocol.
+ Filters can be set.
