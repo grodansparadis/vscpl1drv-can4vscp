@@ -7,8 +7,8 @@ VSCP_PROJ_BASE_DIR=/srv/vscp
 prefix = /usr/local
 exec_prefix = ${prefix}
 INSTALL = /usr/bin/install -c
-top_srcdir = ../../../../../..
-top_builddir = ../../../../../..
+top_srcdir = ..
+top_builddir = ..
 
 CC = gcc
 CXX = g++
@@ -19,12 +19,12 @@ MINOR_VERSION = `sed '36!d' ../../../../common/version.h  | cut -b 33-`
 RELEASE_VERSION = `sed '37!d' ../../../../common/version.h  | cut -b 33-`
 BUILD_VERSION = `sed '38!d' ../../../../common/version.h  | cut -b 33-
 
-CFLAGS = -std=c99  -DOPENSSL_API_1_1 -fPIC  -DCBC -I../../../../common -I../../../../../common
+CFLAGS = -std=c99  -fPIC  -DCBC -I../../../../common -I../../../../../common
 CXXFLAGS = -D__LINUX__ -fPIC -D_REENTRANT 
 CPPFLAGS = -D__LINUX__ -fPIC -fno-var-tracking-assignments -I../../../../common -I../../../../../common
 
 LDFLAGS = 
-EXTRALIBS =  -lexpat -lssl -lz -lrt -lm -lcrypto -lpthread -ldl 
+EXTRALIBS = @EXTRALIBS@
 
 DLFLAGS = -g -shared -fPIC -Wl,--no-undefined
 STRIP = strip

@@ -4,7 +4,7 @@ MAJOR_VERSION=`sed '35!d' ../vscp/src/vscp/common/version.h  | cut -b 33-`
 MINOR_VERSION=`sed '36!d' ../vscp/src/vscp/common/version.h  | cut -b 33-`
 RELEASE_VERSION=`sed '37!d' ../vscp/src/vscp/common/version.h  | cut -b 33-`
 BUILD_VERSION=`sed '38!d' ../vscp/src/vscp/common/version.h  | cut -b 33-`
-NAME_PLUS_VER=vscpl1drv-logger-$MAJOR_VERSION.$MINOR_VERSION.$RELEASE_VERSION
+NAME_PLUS_VER=vscpl1drv-can4vscp-$MAJOR_VERSION.$MINOR_VERSION.$RELEASE_VERSION
 BUILD_FOLDER=/tmp/__build__/`date +vscp_build_%y%m%d_%H%M%S`
 
 echo ---$NAME_PLUS_VER
@@ -39,12 +39,12 @@ debuild -us -uc
 
 echo "If all is alright check /tmp/__BUILD__/ for Debian package "
 
-#cp -r vscpl1drv-logger /tmp/__build__/vscpl1drv-logger-${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
+#cp -r vscpl1drv-can4vscp /tmp/__build__/vscpl1drv-can4vscp-${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
 #cd /tmp/__build__
-#tar czvf vscpl1drv-logger_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz vscpl1drv-logger_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
-#rm -rf vscpl1drv-logger_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}vscpl1drv-logger_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
-#tar xzvf vscpl1drv-logger_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz
-#cd vscpl1drv-logger-${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
-#dh_make -f ../vscpl1drv-logger_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz
+#tar czvf vscpl1drv-can4vscp_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz vscpl1drv-can4vscp_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
+#rm -rf vscpl1drv-can4vscp_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}vscpl1drv-can4vscp_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
+#tar xzvf vscpl1drv-can4vscp_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz
+#cd vscpl1drv-can4vscp-${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
+#dh_make -f ../vscpl1drv-can4vscp_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz
 #cp -r debian_orig/* debian
 #debuild -us -uc

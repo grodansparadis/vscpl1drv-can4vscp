@@ -1,7 +1,7 @@
-dnl Autoconf settings for vscpl1drv-logger
+dnl Autoconf settings for vscpl1drv-can4vscp
 dnl $Id: configure.in,v 1.5 2017/10/13 11:22:06 akhe Exp $
 
-AC_INIT( [vscpl1drv-logger], [14.0.0], [akhe@grodansparadis.com])
+AC_INIT( [vscpl1drv-can4vscp], [14.0.0], [akhe@grodansparadis.com])
 AC_CONFIG_SRCDIR([common/log.cpp])
 
 CONFIGURE_LINE="$0 $*"
@@ -10,7 +10,7 @@ CODENAME="Ant"
 AC_CONFIG_MACRO_DIR(m4)
 
 AC_PREREQ(2.57)
-AC_CONFIG_SRCDIR([common/log.cpp])
+AC_CONFIG_SRCDIR([common/can4vscpobj.cpp])
 AC_CONFIG_AUX_DIR(autotools)
 AC_CONFIG_HEADERS([config.h])
 
