@@ -625,6 +625,7 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 PROJ_SUBDIRS
+EXTRALIBS
 VSCPDIR
 POW_LIB
 LIB@&t@OBJS
@@ -6228,6 +6229,7 @@ else
 $as_echo "@%:@define OSBIT 32" >>confdefs.h
 
 fi
+
 
 
 

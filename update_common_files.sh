@@ -8,6 +8,8 @@ cd _vscp_common_general
 rm -f *
 cp  ${VSCP_PATH}/src/common/dllist.c .
 cp  ${VSCP_PATH}/src/common/dllist.h .
+cp  ${VSCP_PATH}/src/common/crc8.h .
+cp  ${VSCP_PATH}/src/common/crc8.c .
 cp  ${VSCP_PATH}/src/common/crc.h .
 cp  ${VSCP_PATH}/src/common/crc.c .
 cp  ${VSCP_PATH}/src/common/com.h .
@@ -24,4 +26,5 @@ cp  ${VSCP_PATH}/src/vscp/common/vscp_class.h .
 cp  ${VSCP_PATH}/src/vscp/common/vscp_type.h .
 cp  ${VSCP_PATH}/src/vscp/common/guid.cpp .
 cp  ${VSCP_PATH}/src/vscp/common/guid.h .
+cp  ${VSCP_PATH}/src/vscp/common/vscp_serial.h .
 cd ..

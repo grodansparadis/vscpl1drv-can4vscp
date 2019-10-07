@@ -79,6 +79,7 @@ AS_IF([test "$ac_cv_sizeof_long" -eq 8],
     [AC_DEFINE([OSBIT], 32, [Define to the size of a long in bits.])])
 
 AC_SUBST(VSCPDIR)
+AC_SUBST(EXTRALIBS)
 
 dnl
 dnl Project base installation folder

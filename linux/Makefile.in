@@ -14,14 +14,14 @@ CC = @CC@
 CXX = @CXX@
 
 # get version from the version file
-MAJOR_VERSION = `sed '35!d' ../../../../common/version.h  | cut -b 33-`
-MINOR_VERSION = `sed '36!d' ../../../../common/version.h  | cut -b 33-`
-RELEASE_VERSION = `sed '37!d' ../../../../common/version.h  | cut -b 33-`
-BUILD_VERSION = `sed '38!d' ../../../../common/version.h  | cut -b 33-
+MAJOR_VERSION = `sed '35!d' ../_vscp_common/version.h  | cut -b 33-`
+MINOR_VERSION = `sed '36!d' ../_vscp_common/version.h  | cut -b 33-`
+RELEASE_VERSION = `sed '37!d' ../_vscp_common/version.h  | cut -b 33-`
+BUILD_VERSION = `sed '38!d' ../_vscp_common/version.h  | cut -b 33-
 
-CFLAGS = -std=c99 @CFLAGS@ -fPIC  -DCBC -I../../../../common -I../../../../../common
-CXXFLAGS = -D__LINUX__ -fPIC -D_REENTRANT 
-CPPFLAGS = -D__LINUX__ -fPIC -fno-var-tracking-assignments -I../../../../common -I../../../../../common
+CFLAGS = -std=c99 @CFLAGS@ -fPIC  -DCBC -I../_vscp_common -I../_vscp_common_general
+CXXFLAGS = -D__LINUX__ -fPIC -D_REENTRANT
+CPPFLAGS = -D__LINUX__ -fPIC -fno-var-tracking-assignments -I../_vscp_common -I../_vscp_common_general
 
 LDFLAGS = @LDFLAGS@
 EXTRALIBS = @EXTRALIBS@
@@ -62,18 +62,18 @@ vscpl1drv-can4vscp.so: $(CAN4VSCP_OBJECTS)
 can4vscpobj.o: ../common/can4vscpobj.cpp ../common/can4vscpobj.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../common/can4vscpobj.cpp -o $@
 
-guid.o: ../../../../common/guid.cpp ../../../../common/guid.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../../../../common/guid.cpp -o $@
+guid.o: ../_vscp_common/guid.cpp ../_vscp_common/guid.h
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../_vscp_common/guid.cpp -o $@
 
-dllist.o: ../../../../../common/dllist.c ../../../../../common/dllist.h
-	$(CC) $(CFLAGS) -c ../../../../../common/dllist.c -o $@
+dllist.o: ../_vscp_common_general/dllist.c ../_vscp_common_general/dllist.h
+	$(CC) $(CFLAGS) -c ../_vscp_common_general/dllist.c -o $@
 
-crc8.o: ../../../../../common/crc8.c ../../../../../common/crc8.h
-	$(CC) $(CFLAGS) -c ../../../../../common/crc8.c -o $@
+crc8.o: ../_vscp_common_general/crc8.c ../_vscp_common_general/crc8.h
+	$(CC) $(CFLAGS) -c ../_vscp_common_general/crc8.c -o $@
 
-com.o: ../../../../../common/com.cpp ../../../../../common/com.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../../../../../common/com.cpp -o $@
-	
+com.o: ../_vscp_common_general/com.cpp ../_vscp_common_general/com.h
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../_vscp_common_general/com.cpp -o $@
+
 install: all
 	mkdir -p $(VSCP_PROJ_BASE_DIR)/drivers/level1
 	$(INSTALL_PROGRAM) -d $(VSCP_PROJ_BASE_DIR)/drivers/level1
@@ -85,15 +85,15 @@ install-strip: install
 
 deb:    all
 	echo "\n" | ./builddist.sh
-	@mkdir -p ../../../../../../dist
-	@mv *.deb ../../../../../../dist
+	@mkdir -p ../_vscp_common_general/../dist
+	@mv *.deb ../_vscp_common_general/../dist
 
 clean:
 	rm -rf ./.deps ./.pch
 	rm -f ./*.o
 	rm -f ../common/*.o
-	rm -f ../../../../common/*.o
-	rm -f ../../../../../common/*.o
+	rm -f ../_vscp_common/*.o
+	rm -f ../_vscp_common_general/*.o
 	rm -f vscpl1drv-can4vscp.so
 	rm -f test
 	rm -rf ../common/*~
