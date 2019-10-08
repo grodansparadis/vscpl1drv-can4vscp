@@ -576,13 +576,13 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
     // Set CAN4VSCP mode in case of device in verbose mode
     if ( !( m_initFlag & CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE ) ) {
 #ifdef WIN32
-        BOOL rw = m_com.writebuf( (unsigned char *)"SET MODE VSCP\r\n", 19 );   // In case of garbage in queue
+        BOOL rw = m_com.writebuf( (unsigned char *)"SET MODE VSCP\r\n", 15 );   // In case of garbage in queue
         SLEEP( 200 );
-        rw = m_com.writebuf( (unsigned char *)"SET MODE VSCP\r\n", 19 );        // we set CAN4VSCP mode twice
+        rw = m_com.writebuf( (unsigned char *)"SET MODE VSCP\r\n", 15 );        // we set CAN4VSCP mode twice
 #else
-        m_com.comm_puts( (char*)"SET MODE VSCP\r\n", 19 );              // In case of garbage in queue
+        m_com.comm_puts( (char*)"SET MODE VSCP\r\n", 15 );              // In case of garbage in queue
         SLEEP( 200 );
-        m_com.comm_puts( (char*)"SET MODE VSCP\r\n", 19 );              // set CAN4VSCP mode twice
+        m_com.comm_puts( (char*)"SET MODE VSCP\r\n", 15 );              // set CAN4VSCP mode twice
 #endif
     }
 
