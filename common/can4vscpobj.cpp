@@ -638,7 +638,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
     pthread_mutex_init( &m_can4vscpObjMutex, NULL);
 
 
-    // Create the log write thread.
+    // Create the log transmit thread.
     if ( pthread_create( &m_threadId,
                             &thread_attr,
                             workThreadTransmit,
@@ -652,7 +652,6 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
         }
 #endif
     }
-
         // Create the log write thread.
         if ( pthread_create( &m_threadId,
                                 &thread_attr,

@@ -58,11 +58,13 @@ print("Sending 'set verbode mode' frame")
 
 if ( len(sys.argv) >= 2 ):
     can4vscp_port = sys.argv[1]
-    print('Using serial port: ' + can4vscp_port)
+
+print('Using serial port: ' + can4vscp_port)
 
 if ( len(sys.argv) >= 3 ):
     can4vscp_baudrate = int(sys.argv[2])
-    print('Using baudrate: %d' % can4vscp_baudrate)
+
+print('Using baudrate: %d' % can4vscp_baudrate)
 
 # configure the serial connections (the parameters differs on the device you are connecting to)
 ser = serial.Serial(
@@ -74,16 +76,38 @@ ser = serial.Serial(
 )
 
 hash = crc8.crc8()
-hash.update(b'\xff\x00\x00\x00\x02\x01\x00')
+hash.update(b'\x03\x00\x00\x00\x02\x01\x00')
 print('CRC: ' + hash.hexdigest())
 
-#ser.open()
 ser.isOpen()
 
-# Send the can4vscp close frame
-ser.write(b'\x10\x02\xff\x00\x00\x00\x02\x01\x00')
-ser.write(hash.digest())
-ser.write(b'x10\x03')
+# Send the can4vscp 'set mode' frame
+for i in range(3):
+    ser.write(b'\x10\x02\x03\x00\x00\x00\x02\x01\x00')
+    ser.write(hash.digest())
+    ser.write(b'\x10\x03')
+
+bDle = False
+bStx = False
+
+while 1:
+	while ser.inWaiting() > 0:
+		b = ser.read(1)
+		print(hex(b[0]) + ' ', end='', flush=True)
+
+		if bDle :
+			if (b[0] == 2) :   # stx
+				print('<', end='', flush=True)
+				bDle = False
+			elif (b[0] == 3) : # dle
+				print('>')
+				bDle = False
+			else:
+				bDle = False
+		elif b[0] == 0x10 :
+			bDle = True
+		else:
+			bDle = False
 
 ser.close()
 

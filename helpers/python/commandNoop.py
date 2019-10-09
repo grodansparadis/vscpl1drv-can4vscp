@@ -1,4 +1,4 @@
-# FILE: receive.py
+# FILE: commandClose.py
 #
 # This file is part of the VSCP (http://www.vscp.org)
 #
@@ -31,33 +31,17 @@
 # Default port is '/dev/ttyUSB0'
 # Default baudrate is '115200'
 #
-# VSCP Event to/from node
-# -----------------------
+# Close VSCP serial channel
+# -------------------------
 # 0x10  - DLE
 # 0x02  - STX
-# 0x01  - frametype=command   crc
-# 0xxx  - channel             crc
-# 0xxx  - seq no              crc
-# 0xxx  - Size of payload     crc
-# 0xxx  - Size o payload      crc
-# 0xxx  - payload             crc
-# See https://grodansparadis.gitbooks.io/the-vscp-specification/vscp_over_a_serial_channel_rs-232.html#frame-type1---vscp-event
-# 0xxx  - crc
-# 0x10  - DLE
-# 0x03  - ETX
-#
-# CANAL message to/from node
-# --------------------------
-# 0x10  - DLE
-# 0x02  - STX
-# 0x02  - frametype=command   crc
-# 0xxx  - channel             crc
-# 0xxx  - seq no              crc
-# 0xxx  - Size of payload     crc
-# 0xxx  - Size o payload      crc
-# 0xxx  - payload             crc
-# See https://grodansparadis.gitbooks.io/the-vscp-specification/vscp_over_a_serial_channel_rs-232.html#frame-type2---canal-message
-# 0xxx  - crc
+# 0xff  - frametype=command   crc
+# 0x00  - channel             crc
+# 0x00  - seq no              crc
+# 0x00  - Size of payload     crc
+# 0x01  - Size o payload      crc
+# 0x04  - Code for 'close'    crc
+# 0xa6  - crc
 # 0x10  - DLE
 # 0x03  - ETX
 
@@ -66,12 +50,10 @@ import time
 import serial   # https://pythonhosted.org/pyserial/pyserial.html
 import crc8     # https://pypi.org/project/crc8/
 
-inbuf = bytearray()
-
 can4vscp_port = "/dev/ttyUSB0"
 can4vscp_baudrate = 115200
 
-print("Receiving VSCP serial frames")
+print("Sending 'noop' frame")
 
 if ( len(sys.argv) >= 2 ):
     can4vscp_port = sys.argv[1]
@@ -91,10 +73,17 @@ ser = serial.Serial(
 )
 
 hash = crc8.crc8()
-hash.update(b'\xff\x00\x00\x00\x01\x04')
+hash.update(b'\xff\x00\x00\x00\x01\x00')
 print('CRC: ' + hash.hexdigest())
 
+#ser.open()
 ser.isOpen()
+
+# Send the can4vscp close frame
+ser.write(b'\x10\x02\xff\x00\x00\x00\x01\x00')
+ser.write(hash.digest())
+ser.write(b'\x10\x03')
+
 
 bDle = False
 bStx = False
@@ -106,7 +95,7 @@ while 1:
 
 		if bDle :
 			if (b[0] == 2) :   # stx
-				print('<', end='', flush=True)
+				print(' <', end='', flush=False)
 				bDle = False
 			elif (b[0] == 3) : # dle
 				print('>')
@@ -117,6 +106,8 @@ while 1:
 			bDle = True
 		else:
 			bDle = False
+
+
 
 ser.close()
 
