@@ -1,4 +1,4 @@
-% VSCPL1DRV-LOGGER(7) VSCP Level I Logger Driver
+% VSCPL1DRV-LOGGER(1) VSCP Level I Logger Driver
 % Åke Hedman, Grodans Paradis AB
 % October 7, 2019
 

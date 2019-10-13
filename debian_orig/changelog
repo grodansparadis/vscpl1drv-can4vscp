@@ -1,4 +1,4 @@
-vscpl1drv-can4vscp (14.0.0-1) UNRELEASED; urgency=medium
+vscpl1drv-can4vscp (1.1.0-1) stable; urgency=medium
 
   * Initial release (Closes: #1234)
 

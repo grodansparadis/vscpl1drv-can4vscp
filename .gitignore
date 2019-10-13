@@ -34,3 +34,6 @@
 # Dist
 dist/*
 
+Makefile
+linux/Makefile
+
