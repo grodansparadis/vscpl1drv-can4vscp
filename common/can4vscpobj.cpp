@@ -354,7 +354,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
 #endif
 
     if ( m_bDebug ) {
-        syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Open driver %s %ld", pConfig, flags );
+        syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Open driver %s %lu", pConfig, flags );
     }
 
     // Initiate statistics
@@ -890,7 +890,7 @@ int CCan4VSCPObj::close( void )
     if ( m_bDebug ) {
         syslog(LOG_DEBUG,"[vscpl1drv-can4vscp] Driver close success");
     }
-    
+
     return CANAL_ERROR_SUCCESS;
 }
 
