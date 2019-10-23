@@ -703,7 +703,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             return CANAL_ERROR_INIT_FAIL;
         }
     } else {
-        if (m_debug) {
+        if (m_bDebug) {
             syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] NOOP initial command test success.");
         }
     }
@@ -730,7 +730,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                 return CANAL_ERROR_INIT_FAIL;
             }
         } else {
-            if (m_debug) {
+            if (m_bDebug) {
                 syslog(LOG_DEBUG,
                        "vscpl1drv-can4vscp] Enable of timestamp success.");
             }
@@ -754,7 +754,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             }
         }
         else {
-            if (m_debug) {
+            if (m_bDebug) {
                 syslog(LOG_DEBUG,
                        "vscpl1drv-can4vscp] Config of CAN bitrate success.");
             }
@@ -784,7 +784,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             }
         }
         else {
-            if (m_debug) {
+            if (m_bDebug) {
                 syslog(LOG_DEBUG,
                        "vscpl1drv-can4vscp] Open listen mode success.");
             }
@@ -805,7 +805,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             }
         }
         else {
-            if (m_debug) {
+            if (m_bDebug) {
                 syslog(LOG_DEBUG,
                        "vscpl1drv-can4vscp] Open loopback mode success.");
             }
@@ -827,7 +827,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             }
         }
         else {
-            if (m_debug) {
+            if (m_bDebug) {
                 syslog(LOG_DEBUG,
                        "vscpl1drv-can4vscp] Open standard mode success.");
             }
