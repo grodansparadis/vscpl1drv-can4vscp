@@ -702,6 +702,10 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             close();
             return CANAL_ERROR_INIT_FAIL;
         }
+    } else {
+        if (m_debug) {
+            syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] NOOP initial command test success.");
+        }
     }
 
     m_bOpen = true;
@@ -725,8 +729,12 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                 close();
                 return CANAL_ERROR_INIT_FAIL;
             }
+        } else {
+            if (m_debug) {
+                syslog(LOG_DEBUG,
+                       "vscpl1drv-can4vscp] Enable of timestamp success.");
+            }
         }
-
     }
 
     // If non standard baudrate we change it here
@@ -743,6 +751,12 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
+            }
+        }
+        else {
+            if (m_debug) {
+                syslog(LOG_DEBUG,
+                       "vscpl1drv-can4vscp] Config of CAN bitrate success.");
             }
         }
 
@@ -769,6 +783,12 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                 return CANAL_ERROR_INIT_FAIL;
             }
         }
+        else {
+            if (m_debug) {
+                syslog(LOG_DEBUG,
+                       "vscpl1drv-can4vscp] Open listen mode success.");
+            }
+        }
         break;
 
     case 2:
@@ -782,6 +802,12 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
+            }
+        }
+        else {
+            if (m_debug) {
+                syslog(LOG_DEBUG,
+                       "vscpl1drv-can4vscp] Open loopback mode success.");
             }
         }
         break;
@@ -798,6 +824,12 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
+            }
+        }
+        else {
+            if (m_debug) {
+                syslog(LOG_DEBUG,
+                       "vscpl1drv-can4vscp] Open standard mode success.");
             }
         }
         break;
