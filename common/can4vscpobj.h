@@ -64,7 +64,7 @@
 #define CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE             0x0020
 #define CAN4VSCP_FLAG_ENABLE_REOPEN                         0x0040
 #define CAN4VSCP_FLAG_ENABLE_STRICT                         0x0080
-#define CAN4VSCP_FLAG_ENABLE_DEBUG                          0x8000
+#define CAN4VSCP_FLAG_ENABLE_DEBUG                          0x80000000
 // Mutexes
 #define CANAL_DLL_CAN4VSCPDRV_OBJ_MUTEX	                    TEXT("___CANAL__DLL_CAN4VSCPDRV_OBJ_MUTEX____")
 #define CANAL_DLL_CAN4VSCPDRV_RECEIVE_MUTEX                 TEXT("___CANAL__DLL_CAN4VSCPDRV_RECEIVE_MUTEX____")

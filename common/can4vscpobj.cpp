@@ -326,6 +326,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
 
     // Enable debug messges if asked to
     if ( flags & CAN4VSCP_FLAG_ENABLE_DEBUG ) {
+        syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Debug mode enabled.");
         m_bDebug = true;
     }
 
@@ -352,9 +353,8 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
     p = szDrvParams;
 #endif
 
-    openlog("vscpl1drv-can4vscp", LOG_CONS, LOG_DAEMON );
     if ( m_bDebug ) {
-        syslog(LOG_DEBUG, "Open driver %s %ld", pConfig, flags );
+        syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Open driver %s %ld", pConfig, flags );
     }
 
     // Initiate statistics
@@ -530,7 +530,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
 
     // if open we have noting to do
     if (0 != m_com.getFD()) {
-        syslog(LOG_ERR, "Serial port is already open. Aborting! ");
+        syslog(LOG_ERR, "[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
         return 0;
     }
 
@@ -538,13 +538,15 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
     // Open Serial Port
     //----------------------------------------------------------------------
     if ( !m_com.open( pDeviceName ) ) {
-        syslog( LOG_ERR, "Open [%s] failed\n", pDeviceName );
+        syslog( LOG_ERR, "[vscpl1drv-can4vscp] Open [%s] failed\n", pDeviceName );
         if ( m_bStrict ) {
             return CANAL_ERROR_INIT_FAIL;
         }
     }
 
-    syslog( LOG_ERR, "Open of port [%s] successful\n", pDeviceName );
+    if ( m_bDebug ) {
+        syslog( LOG_DEBUG, "[vscpl1drv-can4vscp] Open of port [%s] successful\n", pDeviceName );
+    }
 
     //----------------------------------------------------------------------
     // Com::setParam( char *baud, char *parity, char *bits, int HWFlow, int SWFlow )
@@ -644,7 +646,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                             workThreadTransmit,
                             this ) ) {
 
-        syslog( LOG_ERR, "Unable to create can4vscpdrv write thread.");
+        syslog( LOG_ERR, "[vscpl1drv-can4vscp] Unable to create can4vscpdrv write thread.");
 #ifdef DEBUG_CAN4VSCP_RECEIVE
         if (NULL != m_flog) {
             fclose( m_flog );
@@ -657,7 +659,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                                 &thread_attr,
                                 workThreadReceive,
                                 this ) ) {
-            syslog( LOG_ERR, "Unable to create can4vscpdrv receive thread.");
+            syslog( LOG_ERR, "[vscpl1drv-can4vscp] Unable to create can4vscpdrv receive thread.");
 #ifdef DEBUG_CAN4VSCP_RECEIVE
         if (NULL != m_flog) {
             fclose( m_flog );
@@ -695,7 +697,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
     // Give up if not found
     if (!bFound) {
         // Failure
-        syslog(LOG_ERR, "NOOP initial command test failed.");
+        syslog(LOG_ERR, "[vscpl1drv-can4vscp] NOOP initial command test failed.");
         if ( m_bStrict ) {
             close();
             return CANAL_ERROR_INIT_FAIL;
@@ -718,7 +720,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                                 &Msg,
                                 500 ) ) {
             // Failure
-            syslog(LOG_ERR, "Enable of timestamp failed.");
+            syslog(LOG_ERR, "[vscpl1drv-can4vscp] Enable of timestamp failed.");
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
@@ -737,7 +739,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                                 &Msg,
                                 500 ) ) {
             // Failure
-            syslog(LOG_ERR, "Config of CAN bitrate failed.");
+            syslog(LOG_ERR, "[vscpl1drv-can4vscp] Config of CAN bitrate failed.");
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
@@ -761,7 +763,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                                 &Msg,
                                 1000)) {
             // Failure
-            syslog(LOG_ERR, "Failed to open device in listen mode");
+            syslog(LOG_ERR, "[vscpl1drv-can4vscp] Failed to open device in listen mode");
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
@@ -776,7 +778,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                                 &Msg,
                                 1000)) {
             // Failure
-            syslog(LOG_ERR,"Failed to open device in loopback mode.");
+            syslog(LOG_ERR,"[vscpl1drv-can4vscp] Failed to open device in loopback mode.");
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
@@ -792,7 +794,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
                                 &Msg,
                                 1000 ) ) {
             // Failure
-            syslog(LOG_ERR,"Failed to open device in standard mode.");
+            syslog(LOG_ERR,"[vscpl1drv-can4vscp] Failed to open device in standard mode.");
             if ( m_bStrict ) {
                 close();
                 return CANAL_ERROR_INIT_FAIL;
@@ -801,7 +803,10 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
         break;
     }
 
-    syslog(LOG_DEBUG,"Open success");
+    if ( m_bDebug ) {
+        syslog(LOG_DEBUG,"[vscpl1drv-can4vscp] Open success");
+    }
+
     return CANAL_ERROR_SUCCESS;
 }
 
@@ -814,7 +819,9 @@ int CCan4VSCPObj::close( void )
 {
     cmdResponseMsg Msg;
 
-    syslog(LOG_DEBUG,"Closing driver");
+    if ( m_bDebug ) {
+        syslog(LOG_DEBUG,"[vscpl1drv-can4vscp] Closing driver");
+    }
 
     // Do nothing if already terminated
     if ( !m_bRun ) return CANAL_ERROR_SUCCESS;
@@ -880,7 +887,10 @@ int CCan4VSCPObj::close( void )
 
 #endif
 
-    syslog(LOG_DEBUG,"Driver close success");
+    if ( m_bDebug ) {
+        syslog(LOG_DEBUG,"[vscpl1drv-can4vscp] Driver close success");
+    }
+    
     return CANAL_ERROR_SUCCESS;
 }
 
