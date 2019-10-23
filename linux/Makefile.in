@@ -91,7 +91,7 @@ com.o: ../_vscp_common_general/com.cpp ../_vscp_common_general/com.h
 
 install: all
 	mkdir -p $(VSCP_PROJ_BASE_DIR)/drivers/level1
-	$(INSTALL_DIR) -d $(VSCP_PROJ_BASE_DIR)/drivers/level1
+	$(INSTALL_DIR) $(VSCP_PROJ_BASE_DIR)/drivers/level1
 	$(INSTALL_PROGRAM) vscpl1drv-can4vscp.so $(VSCP_PROJ_BASE_DIR)/drivers/level1
 
 man: ../man/vscpl1drv-can4vscp.1.md
