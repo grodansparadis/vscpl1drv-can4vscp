@@ -54,7 +54,7 @@ import crc8     # https://pypi.org/project/crc8/
 can4vscp_port = "/dev/ttyUSB0"
 can4vscp_baudrate = 115200
 
-print("Sending 'set verbode mode' frame")
+print("Sending 'set verbose mode' frame")
 
 if ( len(sys.argv) >= 2 ):
     can4vscp_port = sys.argv[1]
