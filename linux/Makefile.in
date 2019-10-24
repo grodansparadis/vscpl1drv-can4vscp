@@ -67,7 +67,6 @@ all: vscpl1drv-can4vscp.so test libvscpl1drv-can4vscp.a
 libvscpl1drv-can4vscp.a:	vscpl1drv-can4vscp.so
 	ar rcs libvscpl1drv-can4vscp.a $(CAN4VSCP_OBJECTS)
 
-
 test:  test.o $(CAN4VSCP_OBJECTS)
 	$(CXX) -o $@ test.o $(CAN4VSCP_OBJECTS) $(LDFLAGS) -L$(LIBDIRNAME) @LIBS@ $(EXTRALIBS)
 
