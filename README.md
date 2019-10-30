@@ -64,7 +64,7 @@ Typical settings for VSCP daemon config
         <name>can4vscp</name>
         <config>/dev/ttyUSB0</config>
         <path>/usr/local/lib/vscpl1_can4vscpdrv.so</path>
-        <flags>0</flags>
+        <flags>32</flags>
         <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
     </driver>
 ```
@@ -80,7 +80,7 @@ Typical settings for VSCP daemon config
  | Bit 5    | Enable hardware handshake.  |
  | Bit 6 | Enable strict mode. Driver will terminate on all errors.  |
  | Bit 7-30 | Reserved.  |
- | Bit 31 | Enable debug messages to LOG_DEBUG, syslog.  |
+ | Bit 31 | Enable debug messages to LOG_DEBUG, syslog (0x80000000).  |
 
 ## Status return
 
@@ -112,29 +112,31 @@ The CanalGetStatus call returns the status structure with the channel_status mem
 You can find the description of the VSCP serial protocol in the [VSCP specification](http://www.vscp.org/docs/vscpspec/doku.php?id=physical_level_lower_level_protocols#vscp_over_a_serial_channel_rs-232).
 
 ## Install the driver on Linux
-tbd
+
+Install Debian package
+
+> sudo dpkg -i vscpl2drv-can4vscp_1.1.0-1_amd64.deb
+
+using the latest version from the repositories [release section](https://github.com/grodansparadis/vscpl1drv-can4vscp/releases).
+
+or
+
+```
+./configure
+./make
+sudo make install
+```
+
 
 ## Install the driver on Windows
 tbd
 
 ## How to build the driver on Linux
-To build this driver you have to first install the vscp common code. You do this with
-
-```bash
-git clone https://github.com/grodansparadis/vscp.git
-```
-
-In your .bashrc you then need to add the path to the location where the common code is located. Add
-
-```bash
-export VSCP_PATH=path-to-above-folder
-```
-
-Now clone the driver source
 
 ```bash
 git clone https://github.com/grodansparadis/vscpl1drv-can4vscp.git
 cd vscpl1drv-can4vscp
+git submodule update --init
 ./configure
 make
 make install
