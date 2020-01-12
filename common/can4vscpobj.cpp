@@ -7,7 +7,7 @@
 //
 // This file is part of the VSCP (http://www.vscp.org)
 //
-// Copyright (C) 2000-2019 Ake Hedman,
+// Copyright (C) 2000-2020 Ake Hedman,
 // Ake Hedman, Grodans Paradis AB, <akhe@grodansparadis.com>
 //
 // This file is distributed in the hope that it will be useful,
@@ -300,6 +300,8 @@ CCan4VSCPObj::~CCan4VSCPObj()
 int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
 {
 #ifdef WIN32
+    int nComPort = 1;	// COM1 is default
+    
     char szDrvParams[ MAX_PATH ];
     DWORD baud = 115200;
 #else
@@ -311,12 +313,10 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
     strcpy( szBaud, "115200" );
 #endif
     char *p;
-    int nComPort = 1;	// COM1 is default
-    uint8_t saveseq;
+    
     cmdResponseMsg Msg;
-
     m_nBaud = SET_BAUDRATE_115200;
-
+    //uint8_t saveseq;
     m_initFlag = flags;
 
     // Enable strict mode if asked to
@@ -379,7 +379,9 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
 #endif
 
     // Serial port
+#ifdef WIN32    
     nComPort = 1;   // Default com port
+#endif    
     p = strtok( szDrvParams, ";" );
     if ( NULL != p ) {
 #ifdef WIN32
@@ -633,7 +635,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
 #else // LINUX
 
     //----------------------------------------------------------------------
-    //	acquire Mutex
+    //	Acquire mutex
     //----------------------------------------------------------------------
     pthread_attr_t thread_attr;
     pthread_attr_init( &thread_attr );
@@ -678,7 +680,7 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
 
     for ( int i=0; i<3; i++ ) {
 
-        saveseq = m_sequencyno;         // Save the sequence ordinal
+        //saveseq = m_sequencyno;    // Save the sequence ordinal
         if ( sendCommandWait( VSCP_CAN4VSCP_DRIVER_COMMAND_NOOP,
                                 NULL,
                                 0,
@@ -1444,7 +1446,7 @@ bool CCan4VSCPObj::getDeviceCapabilities( void )
 
 bool CCan4VSCPObj::sendMsg( uint8_t *buffer, short size )
 {
-    uint8_t flags = 0;
+    //uint8_t flags = 0;
     bool rv;
 
     if ( m_com.isOpen() ) {
@@ -1872,11 +1874,11 @@ bool CCan4VSCPObj::addToResponseQueue( void )
 {
     if ( ( m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK ) && msgResponseInfo.bWaitingForAckNack ) {
 
-        bool t1 = ( msgResponseInfo.channel ==
-                m_bufferMsgRcv[ VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL ] );
-        bool t2 = ( msgResponseInfo.seq ==
-                m_bufferMsgRcv[ VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY ] );
-        bool t3 = ( t1 && t2 );
+        // bool t1 = ( msgResponseInfo.channel ==
+        //         m_bufferMsgRcv[ VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL ] );
+        // bool t2 = ( msgResponseInfo.seq ==
+        //         m_bufferMsgRcv[ VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY ] );
+        // bool t3 = ( t1 && t2 );
         if ( msgResponseInfo.channel ==
                 m_bufferMsgRcv[ VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL ] )  {
 
