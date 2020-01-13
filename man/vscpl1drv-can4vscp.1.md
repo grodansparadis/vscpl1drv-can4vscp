@@ -34,7 +34,9 @@ The second parameter is the serial baudrate and defaults to 5 which is the cod6e
 
 ### Linux
 
-> port[;nBaud]
+```
+port[;nBaud]
+```
 
 #### port
 The first parameter is the serial port to use (*/dev/ttyS0*, */dev/ttyS1*, */dev/ttyUSB0*, */dev/ttyUSB1* and so on). This parameter is mandatory.
@@ -63,13 +65,13 @@ Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu
 Typical settings for VSCP daemon config
 
 ```xml
-    <driver enable="true" >
-        <name>can4vscp</name>
-        <config>/dev/ttyUSB0</config>
-        <path>/usr/lib/vscpl1_can4vscpdrv.so.1.1.0</path>
-        <flags>0</flags>
-        <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
-    </driver>
+<driver enable="true" >
+    <name>can4vscp</name>
+    <config>/dev/ttyUSB0</config>
+    <path>/usr/lib/vscpl1_can4vscpdrv.so.1.1.0</path>
+    <flags>0</flags>
+    <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
+</driver>
 ```
 
 ## Flags

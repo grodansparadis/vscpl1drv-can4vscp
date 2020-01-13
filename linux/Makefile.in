@@ -104,10 +104,6 @@ com.o: ../vscp/src/common/com.cpp ../vscp/src/common/com.h
 	pandoc -s -t man ../man/vscpl1drv-can4vscp.1.md -o ../man/vscpl1drv-can4vscp.1
 
 install: all
-	mkdir -p $(VSCP_PROJ_BASE_DIR)/drivers/level1
-	$(INSTALL_DIR) $(VSCP_PROJ_BASE_DIR)/drivers/level1
-	$(INSTALL_PROGRAM) vscpl1drv-can4vscp.so $(VSCP_PROJ_BASE_DIR)/drivers/level1
-
 	$(INSTALL_DIR) $(DESTDIR)$(libdir)
 	$(STRIP) $(LIB_PLUS_VER)
 	$(INSTALL_PROGRAM) $(LIB_PLUS_VER) $(DESTDIR)$(libdir)
