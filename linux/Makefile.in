@@ -76,13 +76,13 @@ CAN4VSCP_OBJECTS = vscpl1drv-can4vscp.o\
 
 ### Targets: ###
 
-all: $(LIB_PLUS_VER)
+all: $(LIB_PLUS_VER) ../man/vscpl1drv-can4vscp.1
 
 test:  test.o $(CAN4VSCP_OBJECTS)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ test.o $(CAN4VSCP_OBJECTS) @LIBS@ $(EXTRALIBS)
 
 $(LIB_PLUS_VER): $(CAN4VSCP_OBJECTS)
-	$(CXX) -o $@ $(CAN4VSCP_OBJECTS) $(DLFLAGS) $(LIBS) $(EXTRALIBS)
+	$(CXX) -Wl,-soname,$(LIB_SONAME) -o $@ $(CAN4VSCP_OBJECTS) $(DLFLAGS) $(LIBS) $(EXTRALIBS)
 	ar rcs libvscpl1drv-can4vscp.a $(CAN4VSCP_OBJECTS)
 
 can4vscpobj.o: ../common/can4vscpobj.cpp ../common/can4vscpobj.h
@@ -100,6 +100,9 @@ crc8.o: ../vscp/src/common/crc8.c ../vscp/src/common/crc8.h
 com.o: ../vscp/src/common/com.cpp ../vscp/src/common/com.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../vscp/src/common/com.cpp -o $@
 
+../man/vscpl1drv-can4vscp.1: ../man/vscpl1drv-can4vscp.1.md
+	pandoc -s -t man ../man/vscpl1drv-can4vscp.1.md -o ../man/vscpl1drv-can4vscp.1
+
 install: all
 	mkdir -p $(VSCP_PROJ_BASE_DIR)/drivers/level1
 	$(INSTALL_DIR) $(VSCP_PROJ_BASE_DIR)/drivers/level1
@@ -113,7 +116,7 @@ install: all
 	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl1drv-can4vscp.so.$(MAJOR_VERSION).$(MINOR_VERSION
 	$(INSTALL_PROGRAM) vscpl2drv-can4vscp.a $(DESTDIR)$(libdir)
 
-man: ../man/vscpl1drv-can4vscp.1.md
+man:
 	pandoc -s -t man ../man/vscpl1drv-can4vscp.1.md -o ../man/vscpl1drv-can4vscp.1
 
 uninstall: all

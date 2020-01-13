@@ -1,19 +1,18 @@
-Source: vscpl1drv-can4vscp
+Source: vscpl1drv-can4vscp%MAJOR-VERSION
 Section: utils
 Priority: optional
 Maintainer: Ake Hedman <akhe@grodansparadis.com>
-Build-Depends: debhelper (>= 11), autotools-dev
+Build-Depends: debhelper (>= %COMPAT)
 Standards-Version: 4.1.3
 Homepage: https://www.vscp.org
 Vcs-Browser: https://github.com/grodansparadis/vscpl1drv-can4vscp
 Vcs-Git: https://github.com/grodansparadis/vscpl1drv-can4vscp.git
 
-Package: vscpl1drv-can4vscp
+Package: vscpl1drv-can4vscp%MAJOR-VERSION
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libc6-dev (>= 2.14),
- libstdc++6 (>= 4.9), libgcc1 (>= 1:3.0)
-Description: Level I VSCP serial driver for VSCP & friends
- This level I driver can be added to the VSCP daemon/VSCP Works,
- or other tool that can use VSCP Level I drivers, to interface
- hardware that communicate using the VSCP serial protocol.
- Filters can be set.
+ libstdc++6 (>= 5.2), libgcc1 (>= 1:3.0)
+Description: Level I can4vscp driver for VSCP Works, VSCP Daemon and 
+ other software that can load and use VSCP level I/CANAL drivers. The
+ driver is used to communicate with all devices that implement the
+ VSCP serial protocol.

@@ -1,6 +1,6 @@
-% VSCPL1DRV-LOGGER(1) VSCP Level I Logger Driver
+% VSCPL1DRV-CAN4VSCP(1) VSCP Level I can4vscp serial driver
 % Åke Hedman, Grodans Paradis AB
-% October 7, 2019
+% January 10, 2020
 
 # NAME
 
@@ -12,7 +12,7 @@ vscpl1drv-can4vscp
 
 # DESCRIPTION
 
-VSCP level I driver (CANAL driver) for hardware devices that export there inner functionality with the VSCP standard serial protocol (CAN4VSCP). A typical such device is the [Frankfurt RS-232 module](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html) from Grodans Paradis.
+VSCP level I driver (CANAL driver) for hardware devices that export there inner functionality with the VSCP standard serial protocol (CAN4VSCP). A typical such device is the Frankfurt RS-232 module from Grodans Paradis.
 
 Several drivers can be loaded allowing simultaneous communication with several devices on different busses.
 
@@ -58,7 +58,7 @@ The second parameter is the serial baudrate and defaults to 5 which is the code 
  | 38400    | 11   | 0,16%  | yes     | yes   |
  | 57600    | 12   | 0.94%  | yes     | yes   |
 
-Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu machine with the USB serial adapter that ship with [Frankfurt RS-232](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html).
+Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu machine with the USB serial adapter that ship with the Frankfurt RS-232 module from Frodans Paradis AB.
 
 Typical settings for VSCP daemon config
 
@@ -66,7 +66,7 @@ Typical settings for VSCP daemon config
     <driver enable="true" >
         <name>can4vscp</name>
         <config>/dev/ttyUSB0</config>
-        <path>/usr/local/lib/vscpl1_can4vscpdrv.so</path>
+        <path>/usr/lib/vscpl1_can4vscpdrv.so.1.1.0</path>
         <flags>0</flags>
         <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
     </driver>
@@ -112,22 +112,17 @@ The CanalGetStatus call returns the status structure with the channel_status mem
 
 ## Serial Protocol
 
-You can find the description of the VSCP serial protocol in the [VSCP specification](http://www.vscp.org/docs/vscpspec/doku.php?id=physical_level_lower_level_protocols#vscp_over_a_serial_channel_rs-232).
+You can find the description of the VSCP serial protocol in the [VSCP specification](https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232).
 
 ---
 
 There are many Level I drivers (CANAL drivers) available in VSCP & Friends framework that can be used with both VSCP Works and the VSCP Daemon (vscpd) and other tools that interface the drivers using the CANAL standard interface. Added to that many Level II and Level III drivers are available that can be used with the VSCP Daemon.
 
-Level I drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp-daemon/level_i_drivers.html).
-
-Level II drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp-daemon/level_ii_drivers.html)
-
-Level III drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp-daemon/level_iii_drivers.html)
 
 # SEE ALSO
 
 `vscpd` (8).
-`uvscpd` (8).
+'vscp.conf (5).
 `vscpworks` (1).
 `vscpcmd` (1).
 `vscp-makepassword` (1).
@@ -135,9 +130,9 @@ Level III drivers is documented [here](https://grodansparadis.gitbooks.io/the-vs
 
 The VSCP project homepage is here <https://www.vscp.org>.
 
-The [manual](https://grodansparadis.gitbooks.io/the-vscp-daemon) for vscpd contains full documentation. Other documentation can be found here <https://grodansparadis.gitbooks.io>.
+The [manual](https://docs.vscp.org/vscpd/latest/#/) for vscpd contains full documentation. Other documentation can be found (here)[https://docs.vscp.org/].
 
-The vscpd source code may be downloaded from <https://github.com/grodansparadis/vscp>. Source code for other system components of VSCP & Friends are here <https://github.com/grodansparadis>
+The can4vscp source code may be downloaded from [https://github.com/grodansparadis/vscpl1drv-can4vscp]. Source code for other system components of VSCP & Friends are here [https://github.com/grodansparadis]
 
 # COPYRIGHT
-Copyright 2000-2019 Åke Hedman, Grodans Paradis AB - MIT license.
+Copyright 2000-2020 Åke Hedman, Grodans Paradis AB - MIT license.

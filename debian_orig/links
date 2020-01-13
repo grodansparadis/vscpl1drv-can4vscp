@@ -1,0 +1,3 @@
+/usr/lib/%SUBFOLDER/vscpl1drv-can4vscp.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/%SUBFOLDER/vscpl1drv-can4vscp.so.%MAJOR-VERSION.%MINOR-VERSION
+/usr/lib/%SUBFOLDER/vscpl1drv-can4vscp.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/%SUBFOLDER/vscpl1drv-can4vscp.so.%MAJOR-VERSION
+/usr/lib/%SUBFOLDER/vscpl1drv-can4vscp.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/%SUBFOLDER/vscpl1drv-can4vscp.so

@@ -2,7 +2,7 @@
 
 <!--
   This is a configuration file for the VSCP daemon that is used to
-  debug the vscpl2drv-automation driver.
+  debug the vscpl1drv-can4vscp driver.
 -->
 
 <vscpconfig>
@@ -225,8 +225,8 @@
         <!-- Level II MQTT -->
         <driver enable="true"
             name = "VSCP Level II MQTT Driver"
-            path-driver="/home/akhe/development/VSCP/vscpl2drv-mqtt/linux/vscpl2drv-mqtt.so.1.1.0"
-            path-config="/home/akhe/development/VSCP/vscpl2drv-mqtt/debug/conf_standard.xml"
+            path-driver="/home/akhe/development/VSCP/vscpl1drv-can4vscp/linux/vscpl1drv-can4vscp.so.1.1.0"
+            path-config="/home/akhe/development/VSCP/vscpl1drv-can4vscp/debug/conf_standard.xml"
             guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FE" />
 
     </level2driver>
