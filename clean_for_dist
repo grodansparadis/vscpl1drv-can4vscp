@@ -14,11 +14,8 @@ rm -rf BUILD_WIN32.txt~
 rm -f config.status
 
 echo Removing Work directories...
-rm -rf src/vscp/Build
 find . -type d -name Debug -print -exec rm -rf {} +;
 find . -type d -name Release -print -exec rm -rf {} +;
-find . -type d -name .svn -print -exec rm -rf {} +;
-
 
 echo Removing work files...
 find . -name *.aps -print -exec rm {} +;
@@ -63,17 +60,8 @@ find . -name *.bak -print -exec rm -rf {} +;
 find . -name *.so -print -exec rm -rf {} +;
 
 echo Removing unneeded folders...
-rm -rf ./src/vscp/install_win32
-rm -rf ./src/vscp/install_deb
-rm -rf firmware
-rm -rf docs
-rm -f 'install_files/certs/client.key.orig'
-rm -f 'install_files/certs/server.key.orig'
-rm -f 'install_files/certs/server_bkup.key.orig'
-rm -f 'src/vscp/drivers/level1/candrv/linux/Makefile.orig'
-rm -f 'src/vscp/drivers/level1/lincan/linux/Makefile.orig'
-rm -f 'src/vscp/drivers/level1/logger/linux/Makefile.orig'
-rm -f 'src/vscp/drivers/level2/logger/linux/Makefile.orig'
-rm -f 'src/vscp/helperlib/linux/Makefile.orig'
+rm -f Makefile
+rm -f m4/Makefile
+rm -f linux/Makefile
 rm -rf autom4te.cache
 rm -f config.status

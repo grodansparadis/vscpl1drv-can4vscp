@@ -4,7 +4,7 @@
 	dh $@ --with autoreconf
 
 override_dh_shlibdeps:
-	dpkg-shlibdeps -Tdebian/vscpl1drv-can4vscp.substvars $$(pwd)/debian/vscpl1drv-can4vscp%MAJOR-VERSION/usr/lib/%SUBFOLDER/vscpl1drv-can4vscp.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION
+	dpkg-shlibdeps -Tdebian/substvars $$(pwd)/debian/vscpl1drv-can4vscp/var/lib/vscp/drivers/level1/vscpl1drv-can4vscp.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION
 
 
 override_dh_auto_install:

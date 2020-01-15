@@ -1,5 +1,5 @@
 # codeset.m4 serial AM1 (gettext-0.10.40)
-dnl Copyright (C) 2000-2002 Free Software Foundation, Inc.
+dnl Copyright © 2000-2002 Free Software Foundation, Inc.
 dnl This file is free software, distributed under the terms of the GNU
 dnl General Public License.  As a special exception to the GNU General
 dnl Public License, this file may be distributed as part of a program

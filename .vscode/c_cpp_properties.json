@@ -55,6 +55,7 @@
                     "/usr/include",
                     "/usr/local/include",
                     "${workspaceFolder}/common",
+                    "${workspaceFolder}/linux",
                     "${workspaceFolder}/vscp/src/common",
                     "${workspaceFolder}/vscp/src/vscp/common",
                     "${workspaceFolder}/linux"

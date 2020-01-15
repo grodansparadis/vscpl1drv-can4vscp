@@ -1,6 +1,12 @@
 vscpl1drv-can4vscp for Debian
 -------------------------------
 
-This is a useful driver for the VSCP & Friends package.
+VSCP level I driver (CANAL driver) for hardware devices that export there inner functionality with the VSCP standard serial protocol (CAN4VSCP). A typical such device is the Frankfurt RS-232 module from Grodans Paradis.
 
- -- Ake Hedman <akhe@grodansparadis.com>  Thu, 26 Sep 2019 16:00:01 +0200
+Several drivers can be loaded allowing simultaneous communication with several devices on different busses.
+
+Filters/masks can be used to limit/select sub amount of events.
+
+As the VSCP serial protocol is very generic this free serial protocol may also be the protocol to use for your own hardware which have some sort of serial port available.
+
+ -- Ake Hedman <akhe@grodansparadis.com>  Wed, 14 Jan 2020 16:00:01 +0200

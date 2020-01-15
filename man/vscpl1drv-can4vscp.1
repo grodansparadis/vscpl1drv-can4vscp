@@ -14,9 +14,8 @@ vscpl1drv\-can4vscp
 VSCP level I driver (CANAL driver) for hardware devices that export
 there inner functionality with the VSCP standard serial protocol
 (CAN4VSCP).
-A typical such device is the Frankfurt RS\-232
-module (http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html)
-from Grodans Paradis.
+A typical such device is the Frankfurt RS\-232 module from Grodans
+Paradis.
 .PP
 Several drivers can be loaded allowing simultaneous communication with
 several devices on different busses.
@@ -26,12 +25,13 @@ Filters/masks can be used to limit/select sub amount of events.
 As the VSCP serial protocol is very generic this free serial protocol
 may also be the protocol to use for your own hardware which have some
 sort of serial port available.
-.SS Configuration string
-.SS Windows
-.RS
-.PP
+.SS Configuration string \- Windows
+.IP
+.nf
+\f[C]
 port[;nBaud]
-.RE
+\f[R]
+.fi
 .SS port
 .PP
 The first parameter is the serial port to use (COM1, COM2 and so on).
@@ -39,12 +39,14 @@ This parameter is mandatory.
 .SS nBaud
 .PP
 The second parameter is the serial baudrate and defaults to 5 which is
-the cod6e for 115200 Baud.
-.SS Linux
-.RS
-.PP
+the code for 115200 Baud.
+.SS Configuration string \- Linux
+.IP
+.nf
+\f[C]
 port[;nBaud]
-.RE
+\f[R]
+.fi
 .SS port
 .PP
 The first parameter is the serial port to use (\f[I]/dev/ttyS0\f[R],
@@ -55,6 +57,7 @@ This parameter is mandatory.
 .PP
 The second parameter is the serial baudrate and defaults to 5 which is
 the code for 115200 Baud.
+.SS Baudrate codes
 .PP
 .TS
 tab(@);
@@ -217,20 +220,21 @@ T}
 .TE
 .PP
 Tests on Windows and Linux has been done on a Windows 10 machine and on
-a Ubuntu machine with the USB serial adapter that ship with Frankfurt
-RS\-232 (http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html).
+a Ubuntu machine with the USB serial adapter that ship with the
+Frankfurt RS\-232 module from Frodans Paradis AB.
+.SS VSCP Daemon configuration
 .PP
 Typical settings for VSCP daemon config
 .IP
 .nf
 \f[C]
-    <driver enable=\[dq]true\[dq] >
-        <name>can4vscp</name>
-        <config>/dev/ttyUSB0</config>
-        <path>/usr/local/lib/vscpl1_can4vscpdrv.so</path>
-        <flags>0</flags>
-        <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
-    </driver>
+<driver enable=\[dq]true\[dq] >
+    <name>can4vscp</name>
+    <config>/dev/ttyUSB0</config>
+    <path>/usr/lib/drivers/level1/vscpl1_can4vscpdrv.so</path>
+    <flags>0</flags>
+    <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
+</driver>
 \f[R]
 .fi
 .SS Flags
@@ -401,7 +405,7 @@ T}
 .SS Serial Protocol
 .PP
 You can find the description of the VSCP serial protocol in the VSCP
-specification (http://www.vscp.org/docs/vscpspec/doku.php?id=physical_level_lower_level_protocols#vscp_over_a_serial_channel_rs-232).
+specification (https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232).
 .PP
    *   *   *   *   *
 .PP
@@ -411,19 +415,10 @@ Daemon (vscpd) and other tools that interface the drivers using the
 CANAL standard interface.
 Added to that many Level II and Level III drivers are available that can
 be used with the VSCP Daemon.
-.PP
-Level I drivers is documented
-here (https://grodansparadis.gitbooks.io/the-vscp-daemon/level_i_drivers.html).
-.PP
-Level II drivers is documented
-here (https://grodansparadis.gitbooks.io/the-vscp-daemon/level_ii_drivers.html)
-.PP
-Level III drivers is documented
-here (https://grodansparadis.gitbooks.io/the-vscp-daemon/level_iii_drivers.html)
 .SH SEE ALSO
 .PP
 \f[C]vscpd\f[R] (8).
-\f[C]uvscpd\f[R] (8).
+\f[C]vscp.conf\f[R] (5).
 \f[C]vscpworks\f[R] (1).
 \f[C]vscpcmd\f[R] (1).
 \f[C]vscp\-makepassword\f[R] (1).
@@ -431,17 +426,17 @@ here (https://grodansparadis.gitbooks.io/the-vscp-daemon/level_iii_drivers.html)
 .PP
 The VSCP project homepage is here <https://www.vscp.org>.
 .PP
-The manual (https://grodansparadis.gitbooks.io/the-vscp-daemon) for
-vscpd contains full documentation.
-Other documentation can be found here
-<https://grodansparadis.gitbooks.io>.
+The manual (https://docs.vscp.org/vscpd/latest/#/) for vscpd contains
+full documentation.
+Other documentation can be found (here)[https://docs.vscp.org/].
 .PP
-The vscpd source code may be downloaded from
-<https://github.com/grodansparadis/vscp>.
-Source code for other system components of VSCP & Friends are here
-<https://github.com/grodansparadis>
+The can4vscp source code may be downloaded from
+[https://github.com/grodansparadis/vscpl1drv\-logger].
 .SH COPYRIGHT
 .PP
-Copyright 2000\-2019 \[oA]ke Hedman, Grodans Paradis AB \- MIT license.
+Copyright 2000\-2020 \[oA]ke Hedman, Grodans Paradis AB \- MIT license.
+.SH AUTHORS
+.PP
+\[oA]ke Hedman, Grodans Paradis AB.
 .SH AUTHORS
 \[oA]ke Hedman, Grodans Paradis AB.

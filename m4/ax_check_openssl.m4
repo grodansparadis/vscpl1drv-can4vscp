@@ -23,8 +23,8 @@
 #
 # LICENSE
 #
-#   Copyright (c) 2009,2010 Zmanda Inc. <http://www.zmanda.com/>
-#   Copyright (c) 2009,2010 Dustin J. Mitchell <dustin@zmanda.com>
+#   Copyright © 2009,2010 Zmanda Inc. <http://www.zmanda.com/>
+#   Copyright © 2009,2010 Dustin J. Mitchell <dustin@zmanda.com>
 #
 #   Copying and distribution of this file, with or without modification, are
 #   permitted in any medium without royalty provided the copyright notice

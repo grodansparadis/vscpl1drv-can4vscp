@@ -20,19 +20,20 @@ Filters/masks can be used to limit/select sub amount of events.
 
 As the VSCP serial protocol is very generic this free serial protocol may also be the protocol to use for your own hardware which have some sort of serial port available.
 
-## Configuration string
+## Configuration string - Windows
 
-### Windows
 
-> port[;nBaud]
+```
+port[;nBaud]
+```
 
 #### port
 The first parameter is the serial port to use (COM1, COM2 and so on). This parameter is mandatory.
 
 #### nBaud
-The second parameter is the serial baudrate and defaults to 5 which is the cod6e for 115200 Baud.
+The second parameter is the serial baudrate and defaults to 5 which is the code for 115200 Baud.
 
-### Linux
+### Configuration string - Linux
 
 ```
 port[;nBaud]
@@ -44,6 +45,7 @@ The first parameter is the serial port to use (*/dev/ttyS0*, */dev/ttyS1*, */dev
 #### nBaud
 The second parameter is the serial baudrate and defaults to 5 which is the code for 115200 Baud.
 
+### Baudrate codes
 | Baudrate | Code | Error  | Windows | Linux |
  | :--------: | :----: | :-----:  | :-------: | :-----: |
  | 115200   | 0    | -1.36% | yes     | yes   |
@@ -62,13 +64,14 @@ The second parameter is the serial baudrate and defaults to 5 which is the code 
 
 Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu machine with the USB serial adapter that ship with the Frankfurt RS-232 module from Frodans Paradis AB.
 
+## VSCP Daemon configuration
 Typical settings for VSCP daemon config
 
 ```xml
 <driver enable="true" >
     <name>can4vscp</name>
     <config>/dev/ttyUSB0</config>
-    <path>/usr/lib/vscpl1_can4vscpdrv.so.1.1.0</path>
+    <path>/usr/lib/drivers/level1/vscpl1_can4vscpdrv.so</path>
     <flags>0</flags>
     <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
 </driver>
@@ -124,7 +127,7 @@ There are many Level I drivers (CANAL drivers) available in VSCP & Friends frame
 # SEE ALSO
 
 `vscpd` (8).
-'vscp.conf (5).
+`vscp.conf` (5).
 `vscpworks` (1).
 `vscpcmd` (1).
 `vscp-makepassword` (1).
@@ -134,7 +137,10 @@ The VSCP project homepage is here <https://www.vscp.org>.
 
 The [manual](https://docs.vscp.org/vscpd/latest/#/) for vscpd contains full documentation. Other documentation can be found (here)[https://docs.vscp.org/].
 
-The can4vscp source code may be downloaded from [https://github.com/grodansparadis/vscpl1drv-can4vscp]. Source code for other system components of VSCP & Friends are here [https://github.com/grodansparadis]
+The can4vscp source code may be downloaded from [https://github.com/grodansparadis/vscpl1drv-logger]. 
 
 # COPYRIGHT
 Copyright 2000-2020 Åke Hedman, Grodans Paradis AB - MIT license.
+
+# AUTHORS
+Åke Hedman, Grodans Paradis AB.

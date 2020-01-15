@@ -28,7 +28,7 @@
 #
 # COPYLEFT
 #
-#   Copyright (c) 2011 Rhys Ulerich <rhys.ulerich@gmail.com>
+#   Copyright © 2011 Rhys Ulerich <rhys.ulerich@gmail.com>
 #
 #   Copying and distribution of this file, with or without modification, are
 #   permitted in any medium without royalty provided the copyright notice

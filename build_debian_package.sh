@@ -7,22 +7,24 @@ RELEASE_VERSION=`head -n4  VERSION.m4 |  grep release_version | tr -d "m4_define
 BUILD_VERSION=`head -n4  VERSION.m4 |  grep build_version | tr -d "m4_define[build_version], ()"`
 RELEASE_DEBIAN=`head -n4  VERSION.m4 |  grep release_debian | tr -d "m4_define[release_debian], ()"`
 
-NAME_PLUS_VER="vscpl1drv-can4vscp$MAJOR_VERSION-$MAJOR_VERSION.$MINOR_VERSION.$RELEASE_VERSION"
-#BUILD_FOLDER="dist/`date +vscp_build_%y%m%d_%H%M%S`"
+NAME_PLUS_VER="vscpl1drv-can4vscp-$MAJOR_VERSION.$MINOR_VERSION.$RELEASE_VERSION"
+echo "***   Target=$NAME_PLUS_VER"
 BUILD_FOLDER="../dist"
+echo "***   Build=$BUILD_FOLDER"
 rm -rf ../dist/*
 
 # Debian compability 10 on Raspberry
 # relevant for 'control' and 'compat'
 COMPAT="12"
 
+# Subfolder for libraries
 # makes correct /usr/lib subfolder (/usr/lib/x86_64-linux-gnu/), none on Raspberry
 # relevant for 'install' and 'links'
 #SUBFOLDER='$(DEB_BUILD_GNU_CPU)-$(DEB_BUILD_GNU_SYSTEM)'
 SUBFOLDER="x86_64-linux-gnu"
 
 # dependencies for control
-DEPENDENCY="libc6-dev (>= 2.14), libstdc++6 (>= 5.2), libgcc1 (>= 1:3.0)"
+DEPENDENCY="libc6-dev (>= 2.14), libstdc++6 (>= 4.9), libgcc1 (>= 1:3.0)"
 
 # Get OS and version
 if [ -f /etc/os-release ]; then
@@ -142,6 +144,7 @@ mkdir debian
 cp -r debian_orig/* debian
 
 echo "***   Running dh_make"
+pwd
 dh_make --single --defaultless -f ../$NAME_PLUS_VER.tar.gz -a -s -c mit -y
 
 echo "***   Do variable substitution"

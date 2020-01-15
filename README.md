@@ -162,16 +162,6 @@ Level I drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp
 
 Level II drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp-daemon/level_ii_drivers.html)
 
-Level III drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp-daemon/level_iii_drivers.html)
-
-# SEE ALSO
-
-`vscpd` (8).
-`uvscpd` (8).
-`vscpworks` (1).
-`vscpcmd` (1).
-`vscp-makepassword` (1).
-`vscphelperlib` (1).
 
 The VSCP project homepage is here <https://www.vscp.org>.
 
@@ -180,4 +170,4 @@ The [manual](https://grodansparadis.gitbooks.io/the-vscp-daemon) for vscpd conta
 The vscpd source code may be downloaded from <https://github.com/grodansparadis/vscp>. Source code for other system components of VSCP & Friends are here <https://github.com/grodansparadis>
 
 # COPYRIGHT
-Copyright 2000-2019 Åke Hedman, Grodans Paradis AB - MIT license.
+Copyright © 2000-2020 Ake Hedman, Grodans Paradis AB - MIT license.
