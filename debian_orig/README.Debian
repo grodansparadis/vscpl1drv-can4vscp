@@ -9,4 +9,4 @@ Filters/masks can be used to limit/select sub amount of events.
 
 As the VSCP serial protocol is very generic this free serial protocol may also be the protocol to use for your own hardware which have some sort of serial port available.
 
- -- Ake Hedman <akhe@grodansparadis.com>  Wed, 14 Jan 2020 16:00:01 +0200
+ -- Ake Hedman <akhe@grodansparadis.com>  %DATENOW

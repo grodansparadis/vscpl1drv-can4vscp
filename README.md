@@ -127,6 +127,24 @@ or
 sudo make install
 ```
 
+## Install the driver on Linux using vscp private repository
+
+```
+wget -O - https://apt.vscp.org/apt.vscp.org.gpg.key | sudo apt-key add -
+```
+
+then add
+
+```
+deb http://apt.vscp.org/debian buster main
+deb http://apt.vscp.org/debian eoan main
+```
+
+to the file
+
+```
+/etc/apt/sources.list
+```
 
 ## Install the driver on Windows
 tbd

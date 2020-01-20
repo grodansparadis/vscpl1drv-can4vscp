@@ -10,6 +10,7 @@ RELEASE_DEBIAN=`head -n4  VERSION.m4 |  grep release_debian | tr -d "m4_define[r
 NAME_PLUS_VER="vscpl1drv-can4vscp-$MAJOR_VERSION.$MINOR_VERSION.$RELEASE_VERSION"
 echo "***   Target=$NAME_PLUS_VER"
 BUILD_FOLDER="../dist"
+DATENOW="`date -R`"
 echo "***   Build=$BUILD_FOLDER"
 rm -rf ../dist/*
 
@@ -155,6 +156,7 @@ sed -i "s/%BUILD-VERSION/${BUILD_VERSION}/g" debian/*
 sed -i "s/%RELEASE-DEBIAN/${RELEASE_DEBIAN}/g" debian/*
 sed -i "s/%COMPAT/${COMPAT}/g" debian/*
 sed -i "s/%SUBFOLDER/${SUBFOLDER}/g" debian/*
+sed -i "s/%DATENOW/${DATENOW}/g" debian/*
 
 echo "***   ---Now do 'dpkg-buildpackage -us -uc' or 'dpkg-buildpackage -b'"
 
