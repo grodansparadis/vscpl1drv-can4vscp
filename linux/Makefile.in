@@ -126,7 +126,7 @@ clean:
 	rm -f ../common/*.o
 	rm -f ../vscp/src/vscp/common/*.o
 	rm -f ../vscp/src/common/*.o
-	rm -f vscpl1drv-can4vscp.so
+	rm -f $(LIB_PLUS_VER)
 	rm -f test
 	rm -rf ../common/*~
 	rm -rf *~

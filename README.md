@@ -2,42 +2,64 @@
 
 <img src="https://vscp.org/images/logo.png" width="100">
 
-VSCP level I driver (CANAL driver) for hardware devices that export there inner functionality with the VSCP standard serial protocol (CAN4VSCP). A typical such device is the [Frankfurt RS-232 module](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html) from Grodans Paradis.
+vscpl1drv-can4vscp is a VSCP level I driver ([CANAL driver](https://docs.vscp.org/#canal)) for hardware devices that export there inner functionality with the [VSCP standard serial protocol (CAN4VSCP)](https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232?id=general-frame-format). A typical such device is the [Frankfurt RS-232 module](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html) from [Grodans Paradis AB](https://www.grodansparadis.com).
 
 Several drivers can be loaded allowing simultaneous communication with several devices on different busses.
 
-Filters/masks can be used to limit/select sub amount of events.
+Filters/masks can be set to limit/select sub amount of events.
 
 As the VSCP serial protocol is very generic this free serial protocol may also be the protocol to use for your own hardware which have some sort of serial port available.
 
-**Available for:** Windows, Linux
+## Platforms
+  * Linux
+  * Windows
 
-**Driver for Linux**
-vscpl1drv-can4vscp.so (vscpl1drv-can4vscp.lib)
+## Driver for Linux
 
-**Driver for Windows** vscpl1drv-can4vscp.dll (vscpl1drv-can4vscp.lib)
+```bash
+vscpl1drv-can4vscp.so
+```
+
+## Driver for Windows
+
+vscpl1drv-can4vscp.dll 
+
+## Install location
+
+### Linux
+
+From version 14.0.0 the driver is installed in */var/lib/vscp/drivers/level1*
+
+### Windows
+From version 14.0.0 the driver is installed in */program files/vscpd/drivers/level1*
 
 ## Configuration string
+
+All level I drivers are configured using a semicolon separated configuration string.
 
 ### Windows
 
 > port[;nBaud]
 
 #### port
-The first parameter is the serial port to use (COM1, COM2 and so on). This parameter is mandatory.
+The first parameter is the serial port to use (**COM1**, **COM2** and so on). 
+
+This parameter is mandatory.
 
 #### nBaud
-The second parameter is the serial baudrate and defaults to 5 which is the cod6e for 115200 Baud.
+The second parameter is the serial baudrate and defaults to **5** which is the code for 115200 Baud.
 
 ### Linux
 
 > port[;nBaud]
 
 #### port
-The first parameter is the serial port to use (*/dev/ttyS0*, */dev/ttyS1*, */dev/ttyUSB0*, */dev/ttyUSB1* and so on). This parameter is mandatory.
+The first parameter is the serial port to use (*/dev/ttyS0*, */dev/ttyS1*, */dev/ttyUSB0*, */dev/ttyUSB1* and so on). 
+
+This parameter is mandatory.
 
 #### nBaud
-The second parameter is the serial baudrate and defaults to 5 which is the code for 115200 Baud.
+The second parameter is the serial baud rate and defaults to **5** which is the code for 115200 Baud.
 
 | Baudrate | Code | Error  | Windows | Linux |
  | :--------: | :----: | :-----:  | :-------: | :-----: |
@@ -57,16 +79,34 @@ The second parameter is the serial baudrate and defaults to 5 which is the code 
 
 Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu machine with the USB serial adapter that ship with [Frankfurt RS-232](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html).
 
-Typical settings for VSCP daemon config
+### Typical settings for VSCP daemon config
+
+#### Linux
 
 ```xml
-    <driver enable="true" >
-        <name>can4vscp</name>
-        <config>/dev/ttyUSB0</config>
-        <path>/usr/local/lib/vscpl1_can4vscpdrv.so</path>
-        <flags>32</flags>
-        <guid>00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00</guid>
-    </driver>
+<!-- The can4vscp driver -->
+<driver enable="false"
+        name="can4vscp"
+        config="/dev/ttyUSB0"
+        flags="0"
+        translation="0x02"
+        path="/var/lib/vscp/drivers/level1/vscpl1drv-can4vscp.so"
+        guid="FF:FF:FF:FF:FF:FF:FF:F5:01:00:00:00:00:00:00:02"
+/>
+```
+
+#### Windows
+
+```xml
+<!-- The can4vscp driver -->
+<driver enable="false"
+        name="can4vscp"
+        config="com1"
+        flags="0"
+        translation="0x02"
+        path="/program files/vscpd/drivers/level1/vscpl1drv-can4vscp.so"
+        guid="FF:FF:FF:FF:FF:FF:FF:F5:01:00:00:00:00:00:00:02"
+/>
 ```
 
 ## Flags
@@ -84,7 +124,7 @@ Typical settings for VSCP daemon config
 
 ## Status return
 
-The CanalGetStatus call returns the status structure with the channel_status member having the following meaning:
+The **CanalGetStatus** call returns the status structure with the channel_status member having the following meaning:
 
  | Bit      | Description |
  | ---      | ----------- |
@@ -109,45 +149,49 @@ The CanalGetStatus call returns the status structure with the channel_status mem
 
 ## Serial Protocol
 
-You can find the description of the VSCP serial protocol in the [VSCP specification](http://www.vscp.org/docs/vscpspec/doku.php?id=physical_level_lower_level_protocols#vscp_over_a_serial_channel_rs-232).
+You can find the description of the VSCP serial protocol in the [VSCP specification](https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232?id=general-frame-format).
 
 ## Install the driver on Linux
 
 Install Debian package
 
-> sudo dpkg -i vscpl2drv-can4vscp_1.1.0-1_amd64.deb
+```bash
+> sudo apt install ./vscpl2drv-can4vscp_1.1.0-1_amd64.deb
+```
 
 using the latest version from the repositories [release section](https://github.com/grodansparadis/vscpl1drv-can4vscp/releases).
 
 or
 
 ```
-./configure
+./configure 
 ./make
 sudo make install
 ```
 
+use the switch **--enable-debug** if you want a debug build.
+
 ## Install the driver on Linux using vscp private repository
 
-```
+```bash
 wget -O - https://apt.vscp.org/apt.vscp.org.gpg.key | sudo apt-key add -
 ```
 
 then add
 
-```
+```bash
 deb http://apt.vscp.org/debian buster main
 deb http://apt.vscp.org/debian eoan main
 ```
 
 to the file
 
-```
+```bash
 /etc/apt/sources.list
 ```
 
 ## Install the driver on Windows
-tbd
+Run the installation program. install-vscpl1drv-can4vscp.exe
 
 ## How to build the driver on Linux
 
@@ -159,9 +203,10 @@ git submodule update --init
 make
 make install
 ```
-Default install folder is **/usr/lib**
 
-You need *build-essentials* and *git* installed on your system
+Default install folder is **/var/lib/vscp/drivers/level1**
+
+You need *build-essentials* and *git* installed on your system.
 
 ```bash
 sudo apt update && sudo apt -y upgrade
@@ -176,14 +221,14 @@ tbd
 
 There are many Level I drivers (CANAL drivers) available in VSCP & Friends framework that can be used with both VSCP Works and the VSCP Daemon (vscpd) and other tools that interface the drivers using the CANAL standard interface. Added to that many Level II and Level III drivers are available that can be used with the VSCP Daemon.
 
-Level I drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp-daemon/level_i_drivers.html).
+Level I drivers is documented [here](https://docs.vscp.org/vscpd/latest/#/level_i_drivers).
 
-Level II drivers is documented [here](https://grodansparadis.gitbooks.io/the-vscp-daemon/level_ii_drivers.html)
+Level II drivers is documented [here](https://docs.vscp.org/vscpd/latest/#/level_ii_drivers)
 
 
 The VSCP project homepage is here <https://www.vscp.org>.
 
-The [manual](https://grodansparadis.gitbooks.io/the-vscp-daemon) for vscpd contains full documentation. Other documentation can be found here <https://grodansparadis.gitbooks.io>.
+The [manual](https://docs.vscp.org/vscpd/latest) for vscpd contains full documentation. Other documentation can be found on the  [documentaion portal](https://docs.vscp.org).
 
 The vscpd source code may be downloaded from <https://github.com/grodansparadis/vscp>. Source code for other system components of VSCP & Friends are here <https://github.com/grodansparadis>
 
