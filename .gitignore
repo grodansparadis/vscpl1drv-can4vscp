@@ -38,3 +38,5 @@ dist/*
 
 Makefile
 linux/Makefile
+autom4te.cache/
+config.log

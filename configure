@@ -701,6 +701,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_debug
+enable_asan
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1339,6 +1340,9 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-debug[=no]     compile with debugging; one of yes/info/profile/no
+  --enable-asan           --enable-asan to build with AddressSanitizer
+                          https://github.com/google/sanitizers/wiki/AddressSanitizer
+                          (default disabled
 
 Some influential environment variables:
   CXX         C++ compiler command
@@ -6319,6 +6323,22 @@ STATIC="no"
 fi
 
 
+# Check whether --enable-asan was given.
+if test "${enable_asan+set}" = set; then :
+  enableval=$enable_asan;
+fi
+
+
+if test "x$enable_asan" == "xyes"; then :
+
+  CFLAGS+=" -fsanitize=address"
+  CPPFLAGS+=" -fsanitize=address"
+  CXXFLAGS+=" -fsanitize=address"
+  LDFLAGS+=" -fsanitize=address"
+
+fi
+
+
 
 if test "${DESTDIR+set}" = set; then
   echo "variable \$DESTDIR is set to: $DESTDIR"
@@ -7634,10 +7654,20 @@ else
    echo "build flavour    : release "
 fi
 
+if test "x$enable_asan" = "xyes"; then :
+  echo   "asan enabled     : yes"
+else
+  echo   "asan enabled     : no"
+fi
+
 echo   "LIBS             : ${LIBS}"
 echo   "EXTRALIBS        : ${EXTRALIBS}"
 echo   "EXTRACPPFLAGS    : ${CPPFLAGS}"
 echo   "EXTRACXXFLAGS    : ${CXXFLAGS}"
 echo   "EXTRACFLAGS      : ${CFLAGS}"
 echo   "PROJ_SUBDIRS     : ${PROJ_SUBDIRS}"
+
+echo
+echo "use --enable-debug to build a debug version; release is default."
+echo "use --enable-asan to build with AddressSanitizer https://github.com/google/sanitizers/wiki/AddressSanitizer"
 

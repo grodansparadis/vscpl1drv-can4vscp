@@ -173,8 +173,10 @@ use the switch **--enable-debug** if you want a debug build.
 
 ## Install the driver on Linux using vscp private repository
 
+**Warning !!!** *Currently this is very much experimental*
+
 ```bash
-wget -O - https://apt.vscp.org/apt.vscp.org.gpg.key | sudo apt-key add -
+wget -O - http://apt.vscp.org/apt.vscp.org.gpg.key | sudo apt-key add -
 ```
 
 then add
@@ -190,8 +192,10 @@ to the file
 /etc/apt/sources.list
 ```
 
+replace **eoan** with the os-release you have installed and **debian** to *debian*, *ubuntu* or *raspian*
+
 ## Install the driver on Windows
-Run the installation program. install-vscpl1drv-can4vscp.exe
+Install using the binary install file in the release section.
 
 ## How to build the driver on Linux
 
@@ -215,7 +219,7 @@ sudo apt install build-essential git
 
 
 ## How to build the driver on Windows
-tbd
+The source contains a Visual Studio project. Use this project to build the driver.
 
 ---
 

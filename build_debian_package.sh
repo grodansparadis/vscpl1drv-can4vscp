@@ -1,5 +1,13 @@
 #!/bin/sh
 
+#   arg1 - platform
+#   ---------------
+#   i386    ununtu/debian    ./build_debian_package.sh i386 10
+#   amd64   ununtu/debian    ./build_debian_package.sh amd64 10
+#   armhf   raspbian         ./build_debian_package.sh armhf 10
+#
+#   arg2 - COMPAT
+
 # Package version
 MAJOR_VERSION=`head -n4  VERSION.m4 |  grep major_version | tr -d "m4_define[major_version], ()"`
 MINOR_VERSION=`head -n4  VERSION.m4 |  grep minor_version | tr -d "m4_define[minor_version], ()"`
@@ -17,6 +25,16 @@ rm -rf ../dist/*
 # Debian compability 10 on Raspberry
 # relevant for 'control' and 'compat'
 COMPAT="12"
+
+case "$2" in
+"")
+    echo "Using discovered COMPAT"	
+    ;;  
+*)
+    echo "Setting COMPAT = $2"
+    COMPAT="$2"
+    ;;
+esac
 
 # Subfolder for libraries
 # makes correct /usr/lib subfolder (/usr/lib/x86_64-linux-gnu/), none on Raspberry
@@ -121,6 +139,35 @@ echo "***   ---$NAME_PLUS_VER"
 # Create the build folder
 echo "***   ---Creating build folder:"$BUILD_FOLDER
 mkdir -p $BUILD_FOLDER
+
+# ---------------------------------------------------------------------
+
+case "$1" in
+amd64)
+    echo "Building for amd64"	
+    BITS=64
+    SUBFOLDER="x86_64-linux-gnu"
+    ARCH=x64
+    ;;
+i386)
+    echo "Building for i386"	
+    BITS=32
+    SUBFOLDER="i386-linux-gnu"
+    ARCH=x86
+    ;;
+armhf)
+    echo "Building for armhf"	
+    BITS=32
+    SUBFOLDER="arm-linux-gnueabihf"
+    ARCH=armhf
+    ;;
+*)
+    echo "Building with discovery for installed system"
+    ;;
+esac
+
+# ---------------------------------------------------------------------
+
 
 # Clean project
 make clean
