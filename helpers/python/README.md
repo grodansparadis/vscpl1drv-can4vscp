@@ -29,4 +29,20 @@ Make a CAN4VSCP device go from protocol mode to text on-line mode.
 
 Receive frames from a can4vscp device.
 
+### Using minicom
+
+Install minicom with
+
+```bash
+sudo apt install minicom
+```
+
+You can use minicom to work with a CAN4VSCP adapter. Make sure it is set in text mode and start minicom with.
+
+```bash
+minicom -b115200 -D/dev/ttyUSB0 
+```
+
+Replace /dev/ttyUSB0 with the serial channel you  actually use.
+
 
