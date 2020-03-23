@@ -109,7 +109,7 @@ install: all
 	$(INSTALL_PROGRAM) $(LIB_PLUS_VER) $(DESTDIR)$(libdir)
 	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl1drv-can4vscp.so
 	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl1drv-can4vscp.so.$(MAJOR_VERSION)
-	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl1drv-can4vscp.so.$(MAJOR_VERSION).$(MINOR_VERSION
+	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl1drv-can4vscp.so.$(MAJOR_VERSION).$(MINOR_VERSION)
 	$(INSTALL_PROGRAM) vscpl2drv-can4vscp.a $(DESTDIR)$(libdir)
 
 man:

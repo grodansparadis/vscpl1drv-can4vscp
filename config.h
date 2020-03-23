@@ -252,7 +252,7 @@
 #define NDEBUG /**/
 
 /* Define to the size of a long in bits. */
-#define OSBIT 64
+#define OSBIT 32
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "akhe@grodansparadis.com"
@@ -285,7 +285,7 @@
 #define SELECT_TYPE_ARG5 (struct timeval *)
 
 /* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 8
+#define SIZEOF_LONG 4
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
