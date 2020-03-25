@@ -221,6 +221,25 @@ sudo apt install build-essential git
 ## How to build the driver on Windows
 The source contains a Visual Studio project. Use this project to build the driver.
 
+## Troubleshooting
+
+### Enable debug output
+Set bit 32 of flags (0x8000000) to enable debug output to syslog. This will give diagnostic info that will help to solve many problems. Check the log with
+
+```bash
+cat /var/log/syslog | grep vscpd
+```
+
+### Access rights
+
+The VSCP daemon, VSCP Works or other software that use this driver need to have read/write privileges to any serial ports or similar. For a serial port the easiest way is to issue
+
+```
+chmod a+rw /dev/ttyUSB0
+```
+
+replacing the port with the port you want to use. If this solve the problem you know it is an access rights problem and you can configure correct access rights. In most cases it may not be a good choice to give read/write access to everyone as we do here.
+
 ---
 
 There are many Level I drivers (CANAL drivers) available in VSCP & Friends framework that can be used with both VSCP Works and the VSCP Daemon (vscpd) and other tools that interface the drivers using the CANAL standard interface. Added to that many Level II and Level III drivers are available that can be used with the VSCP Daemon.

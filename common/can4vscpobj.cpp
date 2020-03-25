@@ -538,9 +538,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   //----------------------------------------------------------------------
   if (!m_com.open(pDeviceName)) {
     syslog(LOG_ERR, "[vscpl1drv-can4vscp] Open [%s] failed\n", pDeviceName);
-    if (m_bStrict) {
       return CANAL_ERROR_INIT_FAIL;
-    }
   }
 
   if (m_bDebug) {
