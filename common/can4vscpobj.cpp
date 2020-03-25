@@ -38,6 +38,8 @@
 #include <math.h>
 #endif
 
+#include <string>
+
 // Prototypes
 #ifdef WIN32
 void workThreadTransmit(void *pObject);
@@ -587,14 +589,22 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     m_com.comm_puts((char *)"set mode vscp\r\n", 15,
                     true); // In case of garbage in queue
     SLEEP(100);
-    int cnt = 1;
-    char c;
-    while (-1 != cnt) {
-      c = m_com.readChar(&cnt);
-      fprintf(stderr, "%c", c);
+    {
+      int cnt = 1;
+      char c;
+      std::string str;
+      while (-1 != cnt) {
+        c = m_com.readChar(&cnt);
+        //fprintf(stderr, "%c", c);
+        str += c;
+      }
+
+      if (m_bDebug) {
+        syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] SET MODE VSCP response [%s]",
+               str.c_str());
+      }
     }
-    // m_com.comm_puts( (char*)"set mode vscp\r\n", 15 );              // set
-    // CAN4VSCP mode twice
+
 #endif
   }
 
