@@ -584,9 +584,18 @@ int CCan4VSCPObj::open( const char *pConfig, unsigned long flags )
         SLEEP( 200 );
         rw = m_com.writebuf( (unsigned char *)"SET MODE VSCP\r\n", 15 );        // we set CAN4VSCP mode twice
 #else
-        m_com.comm_puts( (char*)"SET MODE VSCP\r\n", 15 );              // In case of garbage in queue
-        SLEEP( 200 );
-        m_com.comm_puts( (char*)"SET MODE VSCP\r\n", 15 );              // set CAN4VSCP mode twice
+        
+        m_com.comm_puts( (char*)"\r", 1, true );
+        m_com.comm_puts( (char*)"\r\n", 1, true );
+        m_com.comm_puts( (char*)"set mode vscp\r\n", 15, true );              // In case of garbage in queue
+        SLEEP( 100 );
+        int cnt=1;
+        char c;
+        while (-1 != cnt) {
+            c = m_com.readChar(&cnt);
+            fprintf(stderr,"%c",c);
+        }
+        //m_com.comm_puts( (char*)"set mode vscp\r\n", 15 );              // set CAN4VSCP mode twice
 #endif
     }
 

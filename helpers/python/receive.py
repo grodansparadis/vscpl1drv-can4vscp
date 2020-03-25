@@ -69,7 +69,7 @@ import crc8     # https://pypi.org/project/crc8/
 
 inbuf = bytearray()
 
-can4vscp_port = "/dev/ttyUSB0"
+can4vscp_port = "/dev/ttyUSB3"
 can4vscp_baudrate = 115200
 
 print("Receiving VSCP serial frames")

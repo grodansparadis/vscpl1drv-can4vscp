@@ -51,7 +51,7 @@ import time
 import serial   # https://pythonhosted.org/pyserial/pyserial.html
 import crc8     # https://pypi.org/project/crc8/
 
-can4vscp_port = "/dev/ttyUSB0"
+can4vscp_port = "/dev/ttyUSB3"
 can4vscp_baudrate = 115200
 
 print("Sending 'set verbose mode' frame")

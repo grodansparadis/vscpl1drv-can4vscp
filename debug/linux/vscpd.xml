@@ -172,7 +172,7 @@
         <!-- The can4vscp driver -->
         <driver enable="true"
                 name="can4vscp"
-                config="/dev/ttyUSB1"
+                config="/dev/ttyUSB3"
                 flags="0x80000000"
                 translation="0x02"
                 path="/home/akhe/development/VSCP/vscpl1drv-can4vscp/linux/vscpl1drv-can4vscp.so.1.1.0"
