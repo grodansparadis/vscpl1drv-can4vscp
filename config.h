@@ -249,10 +249,10 @@
 #define LSTAT_FOLLOWS_SLASHED_SYMLINK 1
 
 /* Define if debugging is disabled */
-#define NDEBUG /**/
+/* #undef NDEBUG */
 
 /* Define to the size of a long in bits. */
-#define OSBIT 32
+#define OSBIT 64
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "akhe@grodansparadis.com"
@@ -285,7 +285,7 @@
 #define SELECT_TYPE_ARG5 (struct timeval *)
 
 /* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 4
+#define SIZEOF_LONG 8
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -301,7 +301,7 @@
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
-/* #undef YYTEXT_POINTER */
+#define YYTEXT_POINTER 1
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

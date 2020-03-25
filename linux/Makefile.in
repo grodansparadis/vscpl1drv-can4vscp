@@ -39,8 +39,8 @@ VERSION_DEFS = -DMAJOR_VERSION=$(MAJOR_VERSION) -DMINOR_VERSION=$(MINOR_VERSION)
 CFLAGS = -std=c99 @CFLAGS@ ${WARNINGS} -fPIC  -DCBC \
 	-I../vscp/src/common \
 	-I../vscp/src/vscp/common
-CXXFLAGS = -D__LINUX__ -fPIC ${WARNINGS} -D_REENTRANT
-CPPFLAGS = -D__LINUX__ -fPIC ${WARNINGS} -fno-var-tracking-assignments \
+CXXFLAGS = @CXXFLAGS@ -D__LINUX__ -fPIC ${WARNINGS} -D_REENTRANT 
+CPPFLAGS = @CPPFLAGS@ -D__LINUX__ -fPIC ${WARNINGS} -fno-var-tracking-assignments \
 	-I../vscp/src/common \
 	-I../vscp/src/vscp/common \
 	$(VERSION_DEFS)
@@ -123,6 +123,7 @@ install-strip: install
 clean:
 	rm -rf ./.deps ./.pch
 	rm -f ./*.o
+	rm -f *.a 
 	rm -f ../common/*.o
 	rm -f ../vscp/src/vscp/common/*.o
 	rm -f ../vscp/src/common/*.o
