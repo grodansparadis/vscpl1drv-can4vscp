@@ -11,8 +11,9 @@ Filters/masks can be set to limit/select sub amount of events.
 As the VSCP serial protocol is very generic this free serial protocol may also be the protocol to use for your own hardware which have some sort of serial port available.
 
 ## Platforms
-  * Linux
-  * Windows
+
+* Linux
+* Windows
 
 ## Driver for Linux
 
@@ -31,34 +32,43 @@ vscpl1drv-can4vscp.dll
 From version 14.0.0 the driver is installed in */var/lib/vscp/drivers/level1*
 
 ### Windows
+
 From version 14.0.0 the driver is installed in */program files/vscpd/drivers/level1*
 
-## Configuration string
+## Configuration string - Windows
 
 All level I drivers are configured using a semicolon separated configuration string.
 
-### Windows
+```bash
+port[;nBaud]
+```
 
-> port[;nBaud]
+### port
 
-#### port
 The first parameter is the serial port to use (**COM1**, **COM2** and so on). 
 
 This parameter is mandatory.
 
-#### nBaud
+### nBaud
+
 The second parameter is the serial baudrate and defaults to **5** which is the code for 115200 Baud.
 
-### Linux
+## Configuration string -  Linux
 
-> port[;nBaud]
+All level I drivers are configured using a semicolon separated configuration string.
 
-#### port
+```bash
+port[;nBaud]
+```
+
+### port
+
 The first parameter is the serial port to use (*/dev/ttyS0*, */dev/ttyS1*, */dev/ttyUSB0*, */dev/ttyUSB1* and so on). 
 
 This parameter is mandatory.
 
-#### nBaud
+### nBaud
+
 The second parameter is the serial baud rate and defaults to **5** which is the code for 115200 Baud.
 
 | Baudrate | Code | Error  | Windows | Linux |
@@ -79,9 +89,7 @@ The second parameter is the serial baud rate and defaults to **5** which is the 
 
 Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu machine with the USB serial adapter that ship with [Frankfurt RS-232](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html).
 
-### Typical settings for VSCP daemon config
-
-#### Linux
+### Typical settings for VSCP daemon config for Linux
 
 ```xml
 <!-- The can4vscp driver -->
@@ -95,7 +103,7 @@ Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu
 />
 ```
 
-#### Windows
+### Typical settings for VSCP daemon config for Windows
 
 ```xml
 <!-- The can4vscp driver -->
@@ -219,11 +227,13 @@ sudo apt install build-essential git
 
 
 ## How to build the driver on Windows
+
 The source contains a Visual Studio project. Use this project to build the driver.
 
 ## Troubleshooting
 
 ### Enable debug output
+
 Set bit 32 of flags (0x8000000) to enable debug output to syslog. This will give diagnostic info that will help to solve many problems. Check the log with
 
 ```bash
@@ -256,4 +266,5 @@ The [manual](https://docs.vscp.org/vscpd/latest) for vscpd contains full documen
 The vscpd source code may be downloaded from <https://github.com/grodansparadis/vscp>. Source code for other system components of VSCP & Friends are here <https://github.com/grodansparadis>
 
 # COPYRIGHT
+
 Copyright © 2000-2020 Ake Hedman, Grodans Paradis AB - MIT license.
