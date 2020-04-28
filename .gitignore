@@ -40,3 +40,5 @@ Makefile
 linux/Makefile
 autom4te.cache/
 config.log
+
+vscpl1drv-can4vscp.so.*

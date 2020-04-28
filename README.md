@@ -179,6 +179,40 @@ sudo make install
 
 use the switch **--enable-debug** if you want a debug build.
 
+### Privileges on serial port
+
+Depending on which user you run the VSCP daemon as you may have to give the vscp daemon read/write access to the serial port where the CAN4VSCP adapter is connected to (ttyS0, ttyS1, ttyUSB0, ttyUSB1....). 
+
+The VSCP daemon is by default running as the user _vscp_ and a serial adapter usually have read/write access to a group called _dialout_ so we need to add the _vscp_ user to this group. This we can do with
+
+```bash
+quit
+
+```
+now restart the VSCP daemon with
+
+```bash
+sudo systemctl restart vscpd
+```
+
+Another method is to define a rule for USB serial adapters. You do this by adding a rule file to _/etc/dev/rules.d_
+
+```bash
+cd /etc/uidev/rules.d
+sudo touch  50-myusb.rules
+sudo vim 50-myusb.rules 
+```
+
+add 
+
+```
+KERNEL=="ttyUSB[0-9]*",MODE="0666"
+```
+
+to the file and reboot the machine. Note that this gives read/write permissions for all serial USB adapters 0-9.
+
+Even another solution is to run the VSCP daemon as root user but this is not recommended for security reasons.
+
 ## Install the driver on Linux using vscp private repository
 
 **Warning !!!** *Currently this is very much experimental*
