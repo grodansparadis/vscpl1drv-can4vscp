@@ -186,8 +186,7 @@ Depending on which user you run the VSCP daemon as you may have to give the vscp
 The VSCP daemon is by default running as the user _vscp_ and a serial adapter usually have read/write access to a group called _dialout_ so we need to add the _vscp_ user to this group. This we can do with
 
 ```bash
-quit
-
+sudo usermod -a -G dialout vscp
 ```
 now restart the VSCP daemon with
 
