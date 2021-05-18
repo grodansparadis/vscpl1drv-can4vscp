@@ -48,4 +48,4 @@ The company can be found at https://www.grodansparadis.com
 </config>
 ```
 
-Copyright © 2000-2020 Ake Hedman, Grodans Paradis AB - MIT license.
+Copyright © 2000-2021 Ake Hedman, Grodans Paradis AB - MIT license.

@@ -1,35 +1,30 @@
-# vscpl1drv-can232
-VSCP Level I driver for devices
+# vscpl1drv-can4vscp - VSCP Level I CAN4VSCP Serial Driver
 
 <img src="https://vscp.org/images/logo.png" width="100">
 
-vscpl1drv-can232 is a VSCP level I driver ([CANAL driver](https://docs.vscp.org/#canal)) for the **Lawicel CAN232** CAN adapter and other compatible **slcan** devices.
+vscpl1drv-can4vscp is a VSCP level I driver ([CANAL driver](https://docs.vscp.org/#canal)) for hardware devices that export there inner functionality with the [VSCP standard serial protocol (CAN4VSCP)](https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232?id=general-frame-format). A typical such device is the [Frankfurt RS-232 module](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html) from [Grodans Paradis AB](https://www.grodansparadis.com).
 
-The linux port of this driver is created by (ice@geomi.org)
+Several drivers can be loaded allowing simultaneous communication with several devices on different busses.
 
-Info about the adapter is available at (https://www.can232.com)
+Filters/masks can be set to limit/select sub amount of events.
 
-This driver interface is for the can232 adapter from Lawicel (or other slcan drivers). This is a low cost CAN adapter that connects to one of the serial communication ports on a computer. The driver can handle the adapter in both polled and non polled mode, which handled transparently to the user. It is recommended however that the following settings are made before real life use.
-
-* Set the baud rate for the device to 115200. You do this with the U1 command. This is the default baud rate used by this driver.
-* Set auto poll mode by issuing the X1 command.
-* Enable the time stamp by issuing the Z1 command.
+As the VSCP serial protocol is very generic this free serial protocol may also be the protocol to use for your own hardware which have some sort of serial port available.
 
 ## Platforms
-  * Linux
-  * Windows
 
-## Driver for Windows
-
-```bash
-vscpl1drv_can232.dll
-```
+* Linux
+* Windows
 
 ## Driver for Linux
 
 ```bash
-vscpl1drv-can232.so
+vscpl1drv-can4vscp.so
 ```
+
+## Driver for Windows
+
+vscpl1drv-can4vscp.dll 
+
 ## Install location
 
 ### Linux
@@ -40,61 +35,104 @@ From version 14.0.0 the driver is installed in */var/lib/vscp/drivers/level1*
 
 From version 14.0.0 the driver is installed in */program files/vscpd/drivers/level1*
 
-## Configuration string
+## Configuration string - Windows
 
 All level I drivers are configured using a semicolon separated configuration string.
 
-The driver string has the following format (note that all values can be entered in either decimal or hexadecimal form (for hex precede with 0x).
-
 ```bash
-> comport;baudrate;mask;filter;bus-speed[;btr0;btr1]
+port[;nBaud]
 ```
 
-###  comport
-The serial communication port to use. 
+### port
 
-For windows use *1,2,3...* 
+The first parameter is the serial port to use (**COM1**, **COM2** and so on). 
 
-For Linux use */dev/ttyS0, /dev/ttyUSB1* etc.
+This parameter is mandatory.
 
-### baudrate
-A valid baud rate for the **serial interface** ( for example. 9600 ).
+### nBaud
 
-### mask (optional)
-The mask for the adapter. Read the Lawicel CAN232 manual on how to set this. It is not the same mask as for CANAL/VSCP.
+The second parameter is the serial baudrate and defaults to **5** which is the code for 115200 Baud.
 
-#### filter (optional)
-The filter for the adapter. Read the Lawicel CAN232 manual on how to set this. It is not the same as for CANAL/VSCP.
+## Configuration string -  Linux
 
-### bus-speed
-is the speed or the **CAN interface**. Valid values are
+All level I drivers are configured using a semicolon separated configuration string.
 
-| Setting | Bus-speed |
-| :-----: | :---------: |
-| 10 | 10Kbps |
-| 20 | 20Kbps |
-| 50 | 50Kbps |
-| 100 |  100Kbps |
-| 125 | 125Kbps |
-| 250 | 250Kbps |
-| 500 | 500Kbps |
-| 800 | 800Kbps |
-| 1000 | 1Mbps |
+```bash
+port[;nBaud]
+```
 
-### btr0/btr1 (Optional.)
-Instead of setting a bus-speed you can set the SJA1000 BTR0/BTR1 values directly. If both are set the bus_speed parameter is ignored.
+### port
 
-### Defaults
+The first parameter is the serial port to use (*/dev/ttyS0*, */dev/ttyS1*, */dev/ttyUSB0*, */dev/ttyUSB1* and so on). 
 
-If no device string is given COM1/ttyS0 will be used. Baud rate will be set to 115200 baud and the filter/mask to fully open. The CAN bit rate will be 500Kbps.
+This parameter is mandatory.
+
+### nBaud
+
+The second parameter is the serial baud rate and defaults to **5** which is the code for 115200 Baud.
+
+| Baudrate | Code | Error  | Windows | Linux |
+ | :--------: | :----: | :-----:  | :-------: | :-----: |
+ | 115200   | 0    | -1.36% | yes     | yes   |
+ | 128000   | 1    | -2.34% | yes     | no    |
+ | 230400   | 2    | -1.36% | no      | yes   |
+ | 256000   | 3    | -2.34% | yes     | no    |
+ | 460800   | 4    | 8.51%  | no      | no    |
+ | 500000   | 5    | 0%     | yes     | yes   |
+ | 625000   | 6    | 0%     | bad     | no    |
+ | 921600   | 7    | -9.58% | no      | bad   |
+ | 1000000  | 8    | 16.67% | no      | bad   |
+ | 9600     | 9    | 0.16%  | yes     | yes   |
+ | 19200    | 10   | 0,16%  | yes     | yes   |
+ | 38400    | 11   | 0,16%  | yes     | yes   |
+ | 57600    | 12   | 0.94%  | yes     | yes   |
+
+Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu machine with the USB serial adapter that ship with [Frankfurt RS-232](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html).
+
+### Typical settings for VSCP daemon config for Linux
+
+```xml
+<!-- The can4vscp driver -->
+<driver enable="false"
+        name="can4vscp"
+        config="/dev/ttyUSB0"
+        flags="0"
+        translation="0x02"
+        path="/var/lib/vscp/drivers/level1/vscpl1drv-can4vscp.so"
+        guid="FF:FF:FF:FF:FF:FF:FF:F5:01:00:00:00:00:00:00:02"
+/>
+```
+
+### Typical settings for VSCP daemon config for Windows
+
+```xml
+<!-- The can4vscp driver -->
+<driver enable="false"
+        name="can4vscp"
+        config="com1"
+        flags="0"
+        translation="0x02"
+        path="/program files/vscpd/drivers/level1/vscpl1drv-can4vscp.so"
+        guid="FF:FF:FF:FF:FF:FF:FF:F5:01:00:00:00:00:00:00:02"
+/>
+```
 
 ## Flags
 
- Not used. Set to zero.
+ | Bits | Usage |
+ | ----  | ----- |
+ | Bit 0,1  | **Open Mode** <br> **0** - normal <br> **1** - Listen mode <br> **2** - Loopback mode <br> **3** - Reserved |
+ | Bit 2    | If set the driver will not switch to VSCP mode. That is it must be in VSCP mode. Open will be faster. |
+ | Bit 3    | If set the driver will wait for an ACK from the physical device for every sent frame. This will slow down sending but make transmission it very secure. |
+ | Bit 4    | Enable timestamp. The timestamp will be written by the hardware instead of the driver. |
+ | Bit 5    | Enable hardware handshake.  |
+ | Bit 6 | Enable strict mode. Driver will terminate on all errors.  |
+ | Bit 7-30 | Reserved.  |
+ | Bit 31 | Enable debug messages to LOG_DEBUG, syslog (0x80000000).  |
 
 ## Status return
 
-The CanalGetStatus call returns the status structure with the channel_status member having the following meaning:
+The **CanalGetStatus** call returns the status structure with the channel_status member having the following meaning:
 
  | Bit      | Description |
  | ---      | ----------- |
@@ -117,60 +155,19 @@ The CanalGetStatus call returns the status structure with the channel_status mem
  | Bit 30   | Bus Warning status. |
  | Bit 31   | Bus off status |
 
-## Example configurations
+## Serial Protocol
 
-```bash
-> 5;115200;0;0;1000
-```
-
-Uses COM5 at 115200 with filters/masks open to receive all messages and with 1Mbps CAN bit rate.
-
-```bash
-> /dev/ttyUSB1;57600;0;0;0;0x09;0x1C
-```
-
-On Linux uses serial USB adapter 1 at 57600 baud with filters/masks open to receive all messages and with a CAN bit-rate set to 50Kbps using btr0/btr1
-
-## Typical settings for VSCP daemon config
-
-### Linux
-
-```xml
-<!-- The can232 driver -->
-<driver enable="false" 
-        name="can232"
-        config="/dev/ttyS0;19200;0;0;125"
-        flags="0"
-        translation="0x02"
-        path="/var/lib/vscp/drivers/level1/vscpl1drv-can232.so"
-        guid="FF:FF:FF:FF:FF:FF:FF:F5:01:00:00:00:00:00:00:04"
-/>
-```
-
-### Windows
-
-```xml
-<!-- The can232 driver -->
-<driver enable="false"
-        name="can232"
-        config="com1"
-        flags="0"
-        translation="0x02"
-        path="/program files/vscpd/drivers/level1/vscpl1drv-can232.so"
-        guid="FF:FF:FF:FF:FF:FF:FF:F5:01:00:00:00:00:00:00:04"
-/>
-```
-
+You can find the description of the VSCP serial protocol in the [VSCP specification](https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232?id=general-frame-format).
 
 ## Install the driver on Linux
 
 Install Debian package
 
 ```bash
-> sudo apt install ./vscpl2drv-can232_1.1.0-1_amd64.deb
+> sudo apt install ./vscpl2drv-can4vscp_1.1.0-1_amd64.deb
 ```
 
-using the latest version from the repositories [release section](https://github.com/grodansparadis/vscpl1drv-can232/releases).
+using the latest version from the repositories [release section](https://github.com/grodansparadis/vscpl1drv-can4vscp/releases).
 
 or
 
@@ -181,6 +178,39 @@ sudo make install
 ```
 
 use the switch **--enable-debug** if you want a debug build.
+
+### Privileges on serial port
+
+Depending on which user you run the VSCP daemon as you may have to give the vscp daemon read/write access to the serial port where the CAN4VSCP adapter is connected to (ttyS0, ttyS1, ttyUSB0, ttyUSB1....). 
+
+The VSCP daemon is by default running as the user _vscp_ and a serial adapter usually have read/write access to a group called _dialout_ so we need to add the _vscp_ user to this group. This we can do with
+
+```bash
+sudo usermod -a -G dialout vscp
+```
+now restart the VSCP daemon with
+
+```bash
+sudo systemctl restart vscpd
+```
+
+Another method is to define a rule for USB serial adapters. You do this by adding a rule file to _/etc/dev/rules.d_
+
+```bash
+cd /etc/uidev/rules.d
+sudo touch  50-myusb.rules
+sudo vim 50-myusb.rules 
+```
+
+add 
+
+```
+KERNEL=="ttyUSB[0-9]*",MODE="0666"
+```
+
+to the file and reboot the machine. Note that this gives read/write permissions for all serial USB adapters 0-9.
+
+Even another solution is to run the VSCP daemon as root user but this is not recommended for security reasons.
 
 ## Install the driver on Linux using vscp private repository
 
@@ -211,8 +241,8 @@ Install using the binary install file in the release section.
 ## How to build the driver on Linux
 
 ```bash
-git clone https://github.com/grodansparadis/vscpl1drv-can232.git
-cd vscpl1drv-can232
+git clone https://github.com/grodansparadis/vscpl1drv-can4vscp.git
+cd vscpl1drv-can4vscp
 git submodule update --init
 ./configure
 make
@@ -230,7 +260,56 @@ sudo apt install build-essential git
 
 
 ## How to build the driver on Windows
+
 The source contains a Visual Studio project. Use this project to build the driver.
+
+## Troubleshooting
+
+### Enable debug output
+
+Set bit 32 of flags (0x8000000) to enable debug output to syslog. This will give diagnostic info that will help to solve many problems. Check the log with
+
+```bash
+cat /var/log/syslog | grep vscpd
+```
+
+### Access rights
+
+The VSCP daemon, VSCP Works or other software that use this driver need to have read/write privileges to any serial ports or similar. For a serial port the easiest way is to issue
+
+```
+chmod a+rw /dev/ttyUSB0
+```
+
+replacing the port with the port you want to use. If this solve the problem you know it is an access rights problem and you can configure correct access rights. In most cases it may not be a good choice to give read/write access to everyone as we do here.
+
+The right way to accomplished this is by adding the user to the "dialout" group. Like this
+
+´´´bash
+sudo adduser vscp dialout
+´´´
+Even another method is to create udev rule that allow users access to the ports. Create a file _/etc/udev/rules.d/50-myusb.rules_ and add
+
+```bash
+KERNEL=="ttyUSB[0-9]*",MODE="0666"
+KERNEL=="ttyACM[0-9]*",MODE="0666"
+```
+
+to it and restart or unplug/replug the device.  Beware that right 666 is as devilish as it looks and give all rights to everyone.
+
+#### Port name/path change after configuration
+
+As with all USB serial ports on Linux there is a chance that they change position in the USB enumeration tree. That is a port you known as _/dev/ttyUSB0_ becomes _/dev/ttyUSB1_ or something like that when you do a change in your configuration. 
+
+The solution to this problem is to make a udev rule. Check [this writeup](https://askubuntu.com/questions/1021547/writing-udev-rule-for-usb-device) on how to do this. A typical example is from one of the test machines here with two USB serial ports. One for an electric meter and one for a CAN4VSCP serial device. It is setup like this
+
+```bash
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="1-1.4", SYMLINK+="electric_meter"
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="1-1.5", SYMLINK+="vscp_serial0"
+```
+
+The serial adepter has the same vendor id and the same product id so we use the enumeration tree to distinguish between them.
+
 
 ---
 
@@ -247,38 +326,6 @@ The [manual](https://docs.vscp.org/vscpd/latest) for vscpd contains full documen
 
 The vscpd source code may be downloaded from <https://github.com/grodansparadis/vscp>. Source code for other system components of VSCP & Friends are here <https://github.com/grodansparadis>
 
-## Trouble shooting
+# COPYRIGHT
 
-### Linux
-
-#### Rights to use port
-
-The user you run the VSCP daemon under (normally "vscp") must have rights to use the serial port. This is accomplished by adding the user to the "dialout" group. Like this
-
-´´´bash
-sudo adduser vscp dialout
-´´´
-Another method is to create udev rule that allow users access to the ports. Create a file _/etc/udev/rules.d/50-myusb.rules_ and add
-
-```bash
-KERNEL=="ttyUSB[0-9]*",MODE="0666"
-KERNEL=="ttyACM[0-9]*",MODE="0666"
-```
-
-to it and restart or unplug/replug the device.  Beware that right 666 is as devilish as it looks and give all rights to everyone.
-
-#### Port name/path change after configuration
-
-As with all USB serial ports on Linux there is a chance that they change position in the USB enumeration tree. That is a port you known as /dev/ttyUSB0 becomes /dev/ttyUSB1 or something like that when you do a change in your configuration. 
-
-The solution to this problem is to make a udev rule. Check [this writeup](https://askubuntu.com/questions/1021547/writing-udev-rule-for-usb-device) on how to do this. A typical example is from one of the test machines here with two USB serial ports. One for an electric meter and one for a CAN4VSCP serial device. It is setup like this
-
-```bash
-ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="1-1.4", SYMLINK+="electric_meter"
-ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="1-1.5", SYMLINK+="vscp_serial0"
-```
-
-The serial adepter has the same vendor id and the same product id so we use the enumeration tree to distinguish between them.
-
-## COPYRIGHT
 Copyright © 2000-2021 Ake Hedman, Grodans Paradis AB - MIT license.
