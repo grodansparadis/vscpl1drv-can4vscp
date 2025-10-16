@@ -797,7 +797,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   case 0:
   default:
     if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_OPEN, NULL, 0, &Msg,
-                         1000)) {
+                         3000)) {
       // Failure
       syslog(LOG_ERR,
              "[vscpl1drv-can4vscp] Failed to open device in standard mode.");
