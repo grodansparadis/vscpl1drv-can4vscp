@@ -328,4 +328,4 @@ The vscpd source code may be downloaded from <https://github.com/grodansparadis/
 
 # COPYRIGHT
 
-Copyright © 2000-2022 Ake Hedman, Grodans Paradis AB - MIT license.
+Copyright © 2000-2024 Ake Hedman, Grodans Paradis AB - MIT license.

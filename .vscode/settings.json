@@ -76,5 +76,6 @@
         "valarray": "cpp",
         "variant": "cpp",
         "bit": "cpp"
-    }
+    },
+    "idf.pythonInstallPath": "/home/akhe/.platformio/penv/bin/python"
 }

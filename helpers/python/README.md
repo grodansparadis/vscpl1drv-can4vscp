@@ -4,6 +4,14 @@ Some Python3 utils that help debugging a CAN4VSCP adapter.
 
 ## Preparations before use
 
+Create a virtual environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+
 Install libs. with
 
 ```bash
