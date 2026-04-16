@@ -77,5 +77,11 @@
         "variant": "cpp",
         "bit": "cpp"
     },
-    "idf.pythonInstallPath": "/home/akhe/.platformio/penv/bin/python"
+    "idf.pythonInstallPath": "/home/akhe/.platformio/penv/bin/python",
+    "chat.tools.terminal.autoApprove": {
+        "git remote": true,
+        "git submodule": true,
+        "cmake": true,
+        "nproc": true
+    }
 }

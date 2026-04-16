@@ -1,5 +1,0 @@
-vscpl1drv-can4vscp (%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION-%RELEASE-DEBIAN) stable; urgency=medium
-
-  * Initial release after removal of wxWidgets
-
- -- Ake Hedman <akhe@grodansparadis.com>  %DATENOW
