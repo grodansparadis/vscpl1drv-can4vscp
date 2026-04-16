@@ -23,8 +23,10 @@
 
 #include "can4vscpobj.h"
 #include "dlldrvobj.h"
+#include <cstdarg>
 #include <crc8.h>
 #include <ctype.h>
+#include <spdlog/spdlog.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -39,6 +41,37 @@
 #endif
 
 #include <string>
+#include <vector>
+
+namespace {
+
+void driverLog(spdlog::level::level_enum level, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  va_list args_copy;
+  va_copy(args_copy, args);
+  const int size = std::vsnprintf(nullptr, 0, format, args_copy);
+  va_end(args_copy);
+
+  if (size < 0) {
+    va_end(args);
+    return;
+  }
+
+  std::vector<char> buffer(static_cast<size_t>(size) + 1);
+  std::vsnprintf(buffer.data(), buffer.size(), format, args);
+  va_end(args);
+
+  std::string message(buffer.data(), static_cast<size_t>(size));
+  if (!message.empty() && '\n' == message.back()) {
+    message.pop_back();
+  }
+
+  spdlog::log(level, "{}", message);
+}
+
+} // namespace
 
 // Prototypes
 #ifdef WIN32
@@ -297,7 +330,7 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 // bit 31
 // ======
 //  0  - No debug logging
-//  1  - Debug logging (syslog LOG_DEBUG)
+//  1  - Debug logging (spdlog debug)
 
 int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
 #ifdef WIN32
@@ -327,7 +360,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
 
   // Enable debug messges if asked to
   if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Debug mode enabled.");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Debug mode enabled.");
     m_bDebug = true;
   }
 
@@ -353,8 +386,8 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
 #endif
 
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Open driver %s 0x%lX", pConfig,
-           flags);
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open driver %s 0x%lX", pConfig,
+          flags);
   }
 
   // Initiate statistics
@@ -530,8 +563,8 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
 
   // if open we have noting to do
   if (0 != m_com.getFD()) {
-    syslog(LOG_ERR,
-           "[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
+    driverLog(spdlog::level::err,
+          "[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
     return 0;
   }
 
@@ -539,13 +572,13 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   // Open Serial Port
   //----------------------------------------------------------------------
   if (!m_com.open(pDeviceName)) {
-    syslog(LOG_ERR, "[vscpl1drv-can4vscp] Open [%s] failed\n", pDeviceName);
+    driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Open [%s] failed\n", pDeviceName);
       return CANAL_ERROR_INIT_FAIL;
   }
 
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Open of port [%s] successful\n",
-           pDeviceName);
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open of port [%s] successful\n",
+          pDeviceName);
   }
 
   //----------------------------------------------------------------------
@@ -600,8 +633,8 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
       }
 
       if (m_bDebug) {
-        syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] SET MODE VSCP response [%s]",
-               str.c_str());
+        driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] SET MODE VSCP response [%s]",
+            str.c_str());
       }
     }
 
@@ -654,8 +687,8 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   // Create the log transmit thread.
   if (pthread_create(&m_threadIdTransmit, &thread_attr, workThreadTransmit, this)) {
 
-    syslog(LOG_ERR,
-           "[vscpl1drv-can4vscp] Unable to create can4vscpdrv write thread.");
+    driverLog(spdlog::level::err,
+          "[vscpl1drv-can4vscp] Unable to create can4vscpdrv write thread.");
 #ifdef DEBUG_CAN4VSCP_RECEIVE
     if (NULL != m_flog) {
       fclose(m_flog);
@@ -665,8 +698,8 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   }
   // Create the receive thread.
   if (pthread_create(&m_threadIdReceive, &thread_attr, workThreadReceive, this)) {
-    syslog(LOG_ERR,
-           "[vscpl1drv-can4vscp] Unable to create can4vscpdrv receive thread.");
+    driverLog(spdlog::level::err,
+          "[vscpl1drv-can4vscp] Unable to create can4vscpdrv receive thread.");
 #ifdef DEBUG_CAN4VSCP_RECEIVE
     if (NULL != m_flog) {
       fclose(m_flog);
@@ -699,15 +732,15 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   // Give up if not found
   if (!bFound) {
     // Failure
-    syslog(LOG_ERR, "[vscpl1drv-can4vscp] NOOP initial command test failed.");
+    driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] NOOP initial command test failed.");
     if (m_bStrict) {
       close();
       return CANAL_ERROR_INIT_FAIL;
     }
   } else {
     if (m_bDebug) {
-      syslog(LOG_DEBUG,
-             "[vscpl1drv-can4vscp] NOOP initial command test success.");
+      driverLog(spdlog::level::debug,
+            "[vscpl1drv-can4vscp] NOOP initial command test success.");
     }
   }
 
@@ -723,14 +756,14 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     uint8_t conf = 1;
     if (!sendConfigWait(VSCP_DRIVER_CONFIG_TIMESTAMP, &conf, 1, &Msg, 500)) {
       // Failure
-      syslog(LOG_ERR, "[vscpl1drv-can4vscp] Enable of timestamp failed.");
+      driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Enable of timestamp failed.");
       if (m_bStrict) {
         close();
         return CANAL_ERROR_INIT_FAIL;
       }
     } else {
       if (m_bDebug) {
-        syslog(LOG_DEBUG, "vscpl1drv-can4vscp] Enable of timestamp success.");
+        driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Enable of timestamp success.");
       }
     }
   }
@@ -741,14 +774,14 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     uint8_t conf = m_nBaud;
     if (!sendConfigWait(VSCP_DRIVER_CONFIG_BAUDRATE, &conf, 1, &Msg, 500)) {
       // Failure
-      syslog(LOG_ERR, "[vscpl1drv-can4vscp] Config of CAN bitrate failed.");
+      driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Config of CAN bitrate failed.");
       if (m_bStrict) {
         close();
         return CANAL_ERROR_INIT_FAIL;
       }
     } else {
       if (m_bDebug) {
-        syslog(LOG_DEBUG, "vscpl1drv-can4vscp] Config of CAN bitrate success.");
+        driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Config of CAN bitrate success.");
       }
     }
   }
@@ -764,15 +797,15 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LISTEN, NULL, 0, &Msg,
                          1000)) {
       // Failure
-      syslog(LOG_ERR,
-             "[vscpl1drv-can4vscp] Failed to open device in listen mode");
+      driverLog(spdlog::level::err,
+            "[vscpl1drv-can4vscp] Failed to open device in listen mode");
       if (m_bStrict) {
         close();
         return CANAL_ERROR_INIT_FAIL;
       }
     } else {
       if (m_bDebug) {
-        syslog(LOG_DEBUG, "vscpl1drv-can4vscp] Open listen mode success.");
+        driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Open listen mode success.");
       }
     }
     break;
@@ -781,15 +814,15 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LOOPBACK, NULL, 0, &Msg,
                          1000)) {
       // Failure
-      syslog(LOG_ERR,
-             "[vscpl1drv-can4vscp] Failed to open device in loopback mode.");
+      driverLog(spdlog::level::err,
+            "[vscpl1drv-can4vscp] Failed to open device in loopback mode.");
       if (m_bStrict) {
         close();
         return CANAL_ERROR_INIT_FAIL;
       }
     } else {
       if (m_bDebug) {
-        syslog(LOG_DEBUG, "vscpl1drv-can4vscp] Open loopback mode success.");
+        driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Open loopback mode success.");
       }
     }
     break;
@@ -799,22 +832,22 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_OPEN, NULL, 0, &Msg,
                          1000)) {
       // Failure
-      syslog(LOG_ERR,
-             "[vscpl1drv-can4vscp] Failed to open device in standard mode.");
+      driverLog(spdlog::level::err,
+            "[vscpl1drv-can4vscp] Failed to open device in standard mode.");
       if (m_bStrict) {
         close();
         return CANAL_ERROR_INIT_FAIL;
       }
     } else {
       if (m_bDebug) {
-        syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Open standard mode success.");
+        driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open standard mode success.");
       }
     }
     break;
   }
 
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Open success");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open success");
   }
 
   return CANAL_ERROR_SUCCESS;
@@ -829,7 +862,7 @@ int CCan4VSCPObj::close(void)
   cmdResponseMsg Msg;
 
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Closing driver");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver");
   }
 
   // Do nothing if already terminated
@@ -848,14 +881,14 @@ int CCan4VSCPObj::close(void)
   LOCK_MUTEX(m_receiveMutex);
   LOCK_MUTEX(m_responseMutex);
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Mutexes locked");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Mutexes locked");
   }
 
   UNLOCK_MUTEX(m_transmitMutex);
   UNLOCK_MUTEX(m_receiveMutex);
   UNLOCK_MUTEX(m_responseMutex);
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Mutexes unlocked");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Mutexes unlocked");
   }
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
@@ -868,7 +901,7 @@ int CCan4VSCPObj::close(void)
   if (m_com.isOpen()) {
     m_com.close();
     if (m_bDebug) {
-      syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Closing driver: channel closed.");
+      driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: channel closed.");
     }
   }
 
@@ -882,7 +915,7 @@ int CCan4VSCPObj::close(void)
   sem_post(&m_transmitDataPutSem);
   sem_post(&m_transmitDataGetSem);
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
   }
 #endif
 
@@ -908,7 +941,7 @@ int CCan4VSCPObj::close(void)
   sem_destroy(&m_transmitDataPutSem);
   sem_destroy(&m_transmitDataGetSem);
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Closing driver: Semaphores destroyed.");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores destroyed.");
   }
 
   pthread_mutex_destroy(&m_transmitMutex);
@@ -917,24 +950,24 @@ int CCan4VSCPObj::close(void)
 
   pthread_join(m_threadIdReceive, NULL);
   if (m_bDebug) {
-    syslog(LOG_DEBUG,
-                "[vscpl1drv-can4vscp] Closing driver: Thread receive rv = %d.",
-                1);
+    driverLog(spdlog::level::debug,
+          "[vscpl1drv-can4vscp] Closing driver: Thread receive rv = %d.",
+          1);
   }
   pthread_join(m_threadIdTransmit, NULL);
   if (m_bDebug) {
-    syslog(LOG_DEBUG,
-                "[vscpl1drv-can4vscp] Closing driver: Thread receive rv = %d.",
-                2);
+    driverLog(spdlog::level::debug,
+          "[vscpl1drv-can4vscp] Closing driver: Thread receive rv = %d.",
+          2);
   }
   pthread_mutex_destroy(&m_can4vscpMutex);
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Closing driver: Threads joined.");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Threads joined.");
   }
 #endif
 
   if (m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] Driver close success");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Driver close success");
   }
 
   return CANAL_ERROR_SUCCESS;
@@ -2598,7 +2631,7 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
   }
 
   if (pobj->m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] transmitMessage");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] transmitMessage");
   }
 
   // Must be a message to transmit
@@ -2862,7 +2895,7 @@ void *workThreadTransmit(void *pObject)
 #else
   rv = 0xaa;
   if (pobj->m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] TX thread terminating");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] TX thread terminating");
   }
   pthread_exit(&rv);
 #endif
@@ -2909,7 +2942,7 @@ void *workThreadReceive(void *pObject)
 #else
   rv = 0x55;
   if (pobj->m_bDebug) {
-    syslog(LOG_DEBUG, "[vscpl1drv-can4vscp] RX thread terminating");
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] RX thread terminating");
   }
   pthread_exit(&rv);
 #endif

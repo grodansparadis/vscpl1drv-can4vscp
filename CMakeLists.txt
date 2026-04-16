@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(vscpl1drv-can4vscp VERSION 1.1.1 LANGUAGES C CXX)
 
+include(FetchContent)
 include(GNUInstallDirs)
 
 set(CMAKE_C_STANDARD 99)
@@ -17,6 +18,25 @@ set(VSCP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/vscp)
 set(VSCP_COMMON_DIR ${VSCP_DIR}/src/common)
 set(VSCP_VSCP_COMMON_DIR ${VSCP_DIR}/src/vscp/common)
 set(DRIVER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+find_package(spdlog CONFIG QUIET)
+if(NOT spdlog_FOUND)
+    FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG v1.15.3
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(spdlog)
+endif()
+
+if(TARGET spdlog::spdlog_header_only)
+    set(SPDLOG_TARGET spdlog::spdlog_header_only)
+elseif(TARGET spdlog::spdlog)
+    set(SPDLOG_TARGET spdlog::spdlog)
+else()
+    message(FATAL_ERROR "spdlog target was not found")
+endif()
 
 set(DRIVER_SOURCES
     src/common/can4vscpobj.cpp
@@ -56,9 +76,9 @@ target_compile_definitions(${DRIVER_TARGET} PRIVATE _REENTRANT)
 
 if(WIN32)
     target_compile_definitions(${DRIVER_TARGET} PRIVATE WIN32 _WINDOWS _CRT_SECURE_NO_WARNINGS CAN4VSCPDRV_EXPORTS)
-    target_link_libraries(${DRIVER_TARGET} PRIVATE odbc32 odbccp32 ws2_32)
+    target_link_libraries(${DRIVER_TARGET} PRIVATE ${SPDLOG_TARGET} odbc32 odbccp32 ws2_32)
 else()
-    target_link_libraries(${DRIVER_TARGET} PRIVATE m pthread dl)
+    target_link_libraries(${DRIVER_TARGET} PRIVATE ${SPDLOG_TARGET} m pthread dl)
 endif()
 
 set_target_properties(${DRIVER_TARGET} PROPERTIES

@@ -676,8 +676,8 @@ public:
     bool m_bStrict;
 
     /*!
-        Write debug messages to sylog LOG_DEBUG
-        ifr bit 31 is set in initflags.
+        Write debug messages using spdlog debug
+        if bit 31 is set in initflags.
     */
     bool m_bDebug;
 
