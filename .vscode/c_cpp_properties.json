@@ -35,11 +35,10 @@
                 "/usr/include/x86_64-linux-gnu",
                 "/usr/include",
                 "/usr/local/include",
-                "${workspaceFolder}/mongoose",
-                "${workspaceFolder}/common",
-                "${workspaceFolder}/vscp/src/common",
-                "${workspaceFolder}/vscp/src/vscp/common",
-                "${workspaceFolder}/linux"
+                "${workspaceFolder}/src/common",
+                "${workspaceFolder}/src/linux",
+                "${workspaceFolder}/third-party/vscp/src/common",
+                "${workspaceFolder}/third-party/vscp/src/vscp/common"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -54,11 +53,10 @@
                     "/usr/include/x86_64-linux-gnu",
                     "/usr/include",
                     "/usr/local/include",
-                    "${workspaceFolder}/common",
-                    "${workspaceFolder}/linux",
-                    "${workspaceFolder}/vscp/src/common",
-                    "${workspaceFolder}/vscp/src/vscp/common",
-                    "${workspaceFolder}/linux"
+                    "${workspaceFolder}/src/common",
+                    "${workspaceFolder}/src/linux",
+                    "${workspaceFolder}/third-party/vscp/src/common",
+                    "${workspaceFolder}/third-party/vscp/src/vscp/common"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""

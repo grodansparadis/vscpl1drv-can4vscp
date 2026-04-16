@@ -31,7 +31,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "com_win32.h"
+#include "com-win32.h"
 
 #else
 
@@ -49,8 +49,8 @@
 #include <stdio.h>
 #include <canal.h>
 #include <vscp.h>
-#include <vscp_serial.h>
-#include <canal_macro.h>
+#include <vscp-serial.h>
+#include <canal-macro.h>
 #include <dllist.h>
 
 // define to create a file c:/tmp/can4vscp.txt with input and

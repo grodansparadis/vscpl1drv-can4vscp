@@ -13,8 +13,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(DRIVER_TARGET vscpl1drv-can4vscp)
 set(DRIVER_SOVERSION 1)
 
-set(VSCP_COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vscp/src/common)
-set(VSCP_VSCP_COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vscp/src/vscp/common)
+set(VSCP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/vscp)
+set(VSCP_COMMON_DIR ${VSCP_DIR}/src/common)
+set(VSCP_VSCP_COMMON_DIR ${VSCP_DIR}/src/vscp/common)
 set(DRIVER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(DRIVER_SOURCES
@@ -27,7 +28,7 @@ if(WIN32)
     list(APPEND DRIVER_SOURCES
         src/windows/can4vscpdrv.cpp
         src/common/dlldrvobj.cpp
-        ${VSCP_COMMON_DIR}/com_win32.cpp
+        ${VSCP_COMMON_DIR}/com-win32.cpp
     )
 else()
     list(APPEND DRIVER_SOURCES
@@ -83,7 +84,7 @@ set(CPACK_PACKAGE_VENDOR "Grodans Paradis AB")
 set(CPACK_PACKAGE_CONTACT "Ake Hedman <akhe@grodansparadis.com>")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VSCP Level I CAN4VSCP Serial Driver")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/vscp/LICENSE)
+set(CPACK_RESOURCE_FILE_LICENSE ${VSCP_DIR}/LICENSE)
 set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
 if(UNIX AND NOT APPLE)

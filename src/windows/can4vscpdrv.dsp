@@ -111,7 +111,7 @@ SOURCE=..\common\can4vscpobj.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\..\common\com_win32.cpp
+SOURCE=..\..\third-party\vscp\src\common\com-win32.cpp
 # End Source File
 # Begin Source File
 
@@ -119,7 +119,7 @@ SOURCE=..\common\dlldrvobj.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\..\common\dllist.c
+SOURCE=..\..\third-party\vscp\src\common\dllist.c
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -135,15 +135,15 @@ SOURCE=..\common\can4vscpobj.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\common\canal.h
+SOURCE=..\..\third-party\vscp\src\vscp\common\canal.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\common\canal_macro.h
+SOURCE=..\..\third-party\vscp\src\vscp\common\canal-macro.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\..\common\com_win32.h
+SOURCE=..\..\third-party\vscp\src\common\com-win32.h
 # End Source File
 # Begin Source File
 
@@ -151,7 +151,7 @@ SOURCE=..\common\dlldrvobj.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\..\common\dllist.h
+SOURCE=..\..\third-party\vscp\src\common\dllist.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

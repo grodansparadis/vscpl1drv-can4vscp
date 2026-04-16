@@ -306,9 +306,9 @@ copy  /Y "$(OutDir)/$(TargetName).lib" "$(VSCP_INSTALL)\files\drivers\$(Platform
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\vscp\src\common\com_win32.cpp" />
-    <ClCompile Include="..\..\vscp\src\common\crc8.c" />
-    <ClCompile Include="..\..\vscp\src\common\dllist.c" />
+    <ClCompile Include="..\..\third-party\vscp\src\common\com-win32.cpp" />
+    <ClCompile Include="..\..\third-party\vscp\src\common\crc8.c" />
+    <ClCompile Include="..\..\third-party\vscp\src\common\dllist.c" />
     <ClCompile Include="can4vscpdrv.cpp" />
     <ClCompile Include="..\common\can4vscpobj.cpp" />
     <ClCompile Include="..\common\dlldrvobj.cpp" />
@@ -318,17 +318,17 @@ copy  /Y "$(OutDir)/$(TargetName).lib" "$(VSCP_INSTALL)\files\drivers\$(Platform
     <CustomBuild Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\vscp\src\common\crc8.h" />
-    <ClInclude Include="..\..\vscp\src\common\dllist.h" />
-    <ClInclude Include="..\..\vscp\src\vscp\common\canal.h" />
-    <ClInclude Include="..\..\vscp\src\vscp\common\canal_macro.h" />
-    <ClInclude Include="..\..\vscp\src\vscp\common\vscp.h" />
-    <ClInclude Include="..\..\vscp\src\vscp\common\vscp_class.h" />
-    <ClInclude Include="..\..\vscp\src\vscp\common\vscp_serial.h" />
-    <ClInclude Include="..\..\vscp\src\vscp\common\vscp_type.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\common\crc8.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\common\dllist.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\vscp\common\canal.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\vscp\common\canal-macro.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\vscp\common\vscp.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\vscp\common\vscp-class.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\vscp\common\vscp-serial.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\vscp\common\vscp-type.h" />
     <ClInclude Include="callback.h" />
     <ClInclude Include="..\common\can4vscpobj.h" />
-    <ClInclude Include="..\..\vscp\src\common\com_win32.h" />
+    <ClInclude Include="..\..\third-party\vscp\src\common\com-win32.h" />
     <ClInclude Include="..\common\dlldrvobj.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <vscp_serial.h>
+#include <vscp-serial.h>
 
 #ifdef WIN32
 #include "callback.h"

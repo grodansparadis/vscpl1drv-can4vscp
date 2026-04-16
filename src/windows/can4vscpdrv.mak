@@ -245,7 +245,7 @@ SOURCE=..\common\dlldrvobj.cpp
 
 !ENDIF 
 
-SOURCE=..\..\..\..\common\dllist.c
+SOURCE=..\..\third-party\vscp\src\common\dllist.c
 
 !IF  "$(CFG)" == "apoxdrv - Win32 Release"
 

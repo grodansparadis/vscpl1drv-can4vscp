@@ -645,7 +645,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\common\com_win32.cpp"
+				RelativePath="..\..\third-party\vscp\src\common\com-win32.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -759,7 +759,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\common\dllist.c"
+				RelativePath="..\..\third-party\vscp\src\common\dllist.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -829,15 +829,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\common\canal.h"
+				RelativePath="..\..\third-party\vscp\src\vscp\common\canal.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\common\canal_macro.h"
+				RelativePath="..\..\third-party\vscp\src\vscp\common\canal-macro.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\common\com_win32.h"
+				RelativePath="..\..\third-party\vscp\src\common\com-win32.h"
 				>
 			</File>
 			<File
@@ -845,7 +845,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\common\dllist.h"
+				RelativePath="..\..\third-party\vscp\src\common\dllist.h"
 				>
 			</File>
 		</Filter>
