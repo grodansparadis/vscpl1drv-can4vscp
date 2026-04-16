@@ -23,12 +23,14 @@
 
 #include "can4vscpobj.h"
 #include "dlldrvobj.h"
+#include <chrono>
 #include <cstdarg>
 #include <crc8.h>
 #include <ctype.h>
 #include <spdlog/spdlog.h>
 #include <stdio.h>
 #include <string.h>
+#include <thread>
 #include <time.h>
 #include <vscp-serial.h>
 
@@ -69,6 +71,41 @@ void driverLog(spdlog::level::level_enum level, const char *format, ...) {
   }
 
   spdlog::log(level, "{}", message);
+}
+
+int semaphoreTimedWait(sem_t *psem, uint32_t timeoutMs) {
+#ifdef __APPLE__
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+
+  for (;;) {
+    if (0 == sem_trywait(psem)) {
+      return 0;
+    }
+
+    if ((EAGAIN != errno) && (EINTR != errno)) {
+      return -1;
+    }
+
+    if (std::chrono::steady_clock::now() >= deadline) {
+      errno = EAGAIN;
+      return -1;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+#else
+  struct timespec deadline = {0, 0};
+  clock_gettime(CLOCK_REALTIME, &deadline);
+
+  deadline.tv_sec += timeoutMs / 1000;
+  deadline.tv_nsec += static_cast<long>(timeoutMs % 1000) * 1000000L;
+  if (deadline.tv_nsec >= 1000000000L) {
+    deadline.tv_sec += deadline.tv_nsec / 1000000000L;
+    deadline.tv_nsec %= 1000000000L;
+  }
+
+  return sem_timedwait(psem, &deadline);
+#endif
 }
 
 } // namespace
@@ -1155,9 +1192,6 @@ int CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout) {
   DWORD res;
 #else
   int res;
-  struct timespec to = {0, 0};
-  clock_gettime(CLOCK_REALTIME, &to);
-  to.tv_sec += Timeout / 1000;
 #endif
 
   // Must be a message pointer
@@ -1182,10 +1216,11 @@ int CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout) {
       return CANAL_ERROR_GENERIC;
     }
 #else
-    res = sem_timedwait(&m_transmitDataPutSem, &to);
-    if (res == EAGAIN) {
+    res = semaphoreTimedWait(&m_transmitDataPutSem, Timeout);
+    if ((0 != res) && (EAGAIN == errno)) {
       return CANAL_ERROR_TIMEOUT;
-    } else {
+    }
+    else {
       return CANAL_ERROR_GENERIC;
     }
 #endif
@@ -1267,9 +1302,6 @@ int CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout) {
   DWORD res;
 #else
   int res;
-  struct timespec to = {0, 0};
-  clock_gettime(CLOCK_REALTIME, &to);
-  to.tv_sec += timeout / 1000;
 #endif
 
   // Must be a message pointer
@@ -1293,8 +1325,8 @@ int CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout) {
       return CANAL_ERROR_GENERIC;
     }
 #else
-    res = sem_timedwait(&m_receiveDataSem, &to);
-    if (res == EAGAIN) {
+    res = semaphoreTimedWait(&m_receiveDataSem, timeout);
+    if ((0 != res) && (EAGAIN == errno)) {
       return CANAL_ERROR_TIMEOUT;
     }
 #endif
@@ -2738,9 +2770,6 @@ void *workThreadTransmit(void *pObject)
 #else
   int rv = 0;
   int res;
-
-  // Timeout for receive
-  struct timespec to = {0, 0};
 #endif
 
   bool bTransmissionInProgress = false; // True while waiting for ACK/NACK
@@ -2779,10 +2808,8 @@ void *workThreadTransmit(void *pObject)
         continue;
       }
 #else
-      clock_gettime(CLOCK_REALTIME, &to);
-      to.tv_nsec += 20000000; // 20 ms
-      res = sem_timedwait(&pobj->m_transmitAckNackSem, &to);
-      if (res == EAGAIN) {
+  res = semaphoreTimedWait(&pobj->m_transmitAckNackSem, 20);
+  if ((0 != res) && (EAGAIN == errno)) {
         // We did not get a ACK/NACK in time - resend frame
         transmitMessage(pobj, &seq);
         continue;
@@ -2832,10 +2859,8 @@ void *workThreadTransmit(void *pObject)
         continue;
       }
 #else
-      clock_gettime(CLOCK_REALTIME, &to);
-      to.tv_nsec += 100000;
-      res = sem_timedwait(&pobj->m_transmitDataGetSem, &to);
-      if (res == EAGAIN) {
+  res = semaphoreTimedWait(&pobj->m_transmitDataGetSem, 1);
+  if ((0 != res) && (EAGAIN == errno)) {
         continue;
       }
 #endif
