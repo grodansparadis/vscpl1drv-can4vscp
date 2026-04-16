@@ -41,12 +41,16 @@ add_library(${DRIVER_TARGET} SHARED ${DRIVER_SOURCES})
 
 target_include_directories(${DRIVER_TARGET}
     PRIVATE
-    ${DRIVER_SOURCE_DIR}/common
-    ${DRIVER_SOURCE_DIR}/linux
-    ${DRIVER_SOURCE_DIR}/windows
+        ${DRIVER_SOURCE_DIR}/common
+        ${DRIVER_SOURCE_DIR}/linux
+        ${DRIVER_SOURCE_DIR}/windows
         ${VSCP_COMMON_DIR}
         ${VSCP_VSCP_COMMON_DIR}
 )
+
+if(APPLE)
+    target_include_directories(${DRIVER_TARGET} PRIVATE ${DRIVER_SOURCE_DIR}/compat)
+endif()
 
 target_compile_definitions(${DRIVER_TARGET} PRIVATE _REENTRANT)
 
