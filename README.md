@@ -14,6 +14,7 @@ As the VSCP serial protocol is very generic this free serial protocol may also b
 
 * Linux
 * Windows
+* macOS
 
 ## Driver for Linux
 
@@ -172,12 +173,12 @@ using the latest version from the repositories [release section](https://github.
 or
 
 ```
-./configure 
-./make
-sudo make install
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+sudo cmake --install build
 ```
 
-use the switch **--enable-debug** if you want a debug build.
+For a debug build, use `-DCMAKE_BUILD_TYPE=Debug`.
 
 ### Privileges on serial port
 
@@ -244,9 +245,9 @@ Install using the binary install file in the release section.
 git clone https://github.com/grodansparadis/vscpl1drv-can4vscp.git
 cd vscpl1drv-can4vscp
 git submodule update --init
-./configure
-make
-make install
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+cmake --install build
 ```
 
 Default install folder is **/var/lib/vscp/drivers/level1**
@@ -261,7 +262,39 @@ sudo apt install build-essential git
 
 ## How to build the driver on Windows
 
-The source contains a Visual Studio project. Use this project to build the driver.
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+cmake --install build --config Release
+```
+
+## How to build the driver on macOS
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+cmake --install build
+```
+
+## How to create install packages with CPack
+
+After building with CMake, create platform-native install packages:
+
+```bash
+# Linux
+cpack --config build/CPackConfig.cmake -G DEB
+cpack --config build/CPackConfig.cmake -G RPM
+cpack --config build/CPackConfig.cmake -G TGZ
+
+# Windows
+cpack --config build/CPackConfig.cmake -C Release -G NSIS
+cpack --config build/CPackConfig.cmake -C Release -G ZIP
+
+# macOS
+cpack --config build/CPackConfig.cmake -G TGZ
+```
+
+The repository CI includes a Homebrew install step on macOS from the generated CPack tarball.
 
 ## Troubleshooting
 

@@ -31,14 +31,21 @@
 *.out
 *.app
 
-linux/test
+src/linux/test
 
 # Dist
 dist/*
-
-Makefile
-linux/Makefile
-autom4te.cache/
-config.log
+build/
+stage/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CPackConfig.cmake
+CPackSourceConfig.cmake
+_CPack_Packages/
 
 vscpl1drv-can4vscp.so.*
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md

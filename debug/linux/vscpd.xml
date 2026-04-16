@@ -175,7 +175,7 @@
                 config="/dev/ttyUSB3"
                 flags="0x80000000"
                 translation="0x02"
-                path="/home/akhe/development/VSCP/vscpl1drv-can4vscp/linux/vscpl1drv-can4vscp.so.1.1.0"
+                path="/home/akhe/development/VSCP/vscpl1drv-can4vscp/build/vscpl1drv-can4vscp.so"
                 guid="FF:FF:FF:FF:FF:FF:FF:F5:01:00:00:00:00:00:00:02"
         />
 
@@ -187,7 +187,7 @@
         <!-- Level II MQTT -->
         <driver enable="false"
             name = "VSCP Level II MQTT Driver"
-            path-driver="/home/akhe/development/VSCP/vscpl1drv-can4vscp/linux/vscpl1drv-can4vscp.so.1.1.0"
+            path-driver="/home/akhe/development/VSCP/vscpl1drv-can4vscp/build/vscpl1drv-can4vscp.so"
             path-config="/home/akhe/development/VSCP/vscpl1drv-can4vscp/debug/conf_standard.xml"
             guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FE" />
 

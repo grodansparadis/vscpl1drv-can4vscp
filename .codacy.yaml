@@ -1,0 +1,6 @@
+exclude_paths:
+  - vscp/**
+  - debian_orig/**
+  - autotools/**
+  - m4/**
+  - src/windows/Template/**

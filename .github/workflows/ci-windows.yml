@@ -1,0 +1,40 @@
+name: Windows CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  build-and-package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Install to staging
+        run: cmake --install build --config Release --prefix "$env:GITHUB_WORKSPACE\\stage"
+
+      - name: Create NSIS package
+        run: cpack --config build/CPackConfig.cmake -C Release -G NSIS -B "$env:GITHUB_WORKSPACE\\dist"
+
+      - name: Create ZIP package
+        run: cpack --config build/CPackConfig.cmake -C Release -G ZIP -B "$env:GITHUB_WORKSPACE\\dist"
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: dist/*
