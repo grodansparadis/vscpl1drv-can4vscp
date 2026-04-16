@@ -65,6 +65,9 @@ target_include_directories(${DRIVER_TARGET}
 
 if(APPLE)
     target_include_directories(${DRIVER_TARGET} PRIVATE ${DRIVER_SOURCE_DIR}/compat)
+    # VSCP com.cpp uses Linux-specific ioctl request constants that are not
+    # available on macOS. Define them to harmless placeholders for Darwin.
+    target_compile_definitions(${DRIVER_TARGET} PRIVATE TCFLSH=0 TIOCSERGETLSR=0)
 endif()
 
 target_compile_definitions(${DRIVER_TARGET} PRIVATE _REENTRANT)
