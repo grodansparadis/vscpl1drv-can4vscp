@@ -140,7 +140,7 @@ The [manual](https://docs.vscp.org/vscpd/latest/#/) for vscpd contains full docu
 The can4vscp source code may be downloaded from [https://github.com/grodansparadis/vscpl1drv-logger]. 
 
 # COPYRIGHT
-Copyright 2000-2020 Åke Hedman, Grodans Paradis AB - MIT license.
+Copyright 2000-2026 Åke Hedman, Grodans Paradis AB - MIT license.
 
 # AUTHORS
 Åke Hedman, Grodans Paradis AB.

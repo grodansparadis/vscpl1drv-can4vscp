@@ -4,7 +4,7 @@
 #
 # The MIT License (MIT)
 #
-# Copyright (C) 2000-2020
+# Copyright (C) 2000-2026
 # Ake Hedman, Grodans Paradis AB
 # <info@grodansparadis.com>
 #
