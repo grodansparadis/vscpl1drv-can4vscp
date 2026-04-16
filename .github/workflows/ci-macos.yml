@@ -27,11 +27,20 @@ jobs:
       - name: Create TGZ package
         run: cpack --config build/CPackConfig.cmake -G TGZ -B "$PWD/dist"
 
+      - name: Create temporary Homebrew tap
+        run: |
+          TAP_NAME="local/vscp-ci"
+          brew tap-new "$TAP_NAME"
+          TAP_DIR="$(brew --repository)/Library/Taps/local/homebrew-vscp-ci"
+          echo "HOMEBREW_TAP_NAME=$TAP_NAME" >> "$GITHUB_ENV"
+          echo "HOMEBREW_TAP_DIR=$TAP_DIR" >> "$GITHUB_ENV"
+
       - name: Generate local Homebrew formula
         run: |
           PKG=$(ls dist/*.tar.gz | head -n1)
           SHA=$(shasum -a 256 "$PKG" | awk '{print $1}')
-          cat > Formula-vscpl1drv-can4vscp.rb <<EOF
+          mkdir -p "$HOMEBREW_TAP_DIR/Formula"
+          cat > "$HOMEBREW_TAP_DIR/Formula/vscpl1drv-can4vscp.rb" <<EOF
           class Vscpl1drvCan4vscp < Formula
             desc "VSCP Level I CAN4VSCP Serial Driver"
             homepage "https://github.com/grodansparadis/vscpl1drv-can4vscp"
@@ -46,7 +55,7 @@ jobs:
           EOF
 
       - name: Test Homebrew install from formula
-        run: brew install --formula ./Formula-vscpl1drv-can4vscp.rb
+        run: brew install --formula "$HOMEBREW_TAP_NAME/vscpl1drv-can4vscp"
 
       - name: Upload packages
         uses: actions/upload-artifact@v4

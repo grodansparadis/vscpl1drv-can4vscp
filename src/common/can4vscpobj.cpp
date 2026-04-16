@@ -71,6 +71,7 @@ void driverLog(spdlog::level::level_enum level, const char *format, ...) {
   spdlog::log(level, "{}", message);
 }
 
+#ifndef WIN32
 int semaphoreTimedWait(vscp_sem_t *psem, uint32_t timeoutMs) {
 #ifdef __APPLE__
   if (0 == timeoutMs) {
@@ -138,6 +139,7 @@ int semaphoreDestroy(vscp_sem_t *psem) {
   return sem_destroy(psem);
 #endif
 }
+#endif
 
 } // namespace
 
