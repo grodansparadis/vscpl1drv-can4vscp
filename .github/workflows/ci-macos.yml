@@ -37,7 +37,7 @@ jobs:
 
       - name: Generate local Homebrew formula
         run: |
-          PKG=$(ls dist/*.tar.gz | head -n1)
+          PKG="$PWD/$(ls dist/*.tar.gz | head -n1)"
           SHA=$(shasum -a 256 "$PKG" | awk '{print $1}')
           mkdir -p "$HOMEBREW_TAP_DIR/Formula"
           cat > "$HOMEBREW_TAP_DIR/Formula/vscpl1drv-can4vscp.rb" <<EOF
