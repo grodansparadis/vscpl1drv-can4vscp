@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 
 project(vscpl1drv-can4vscp VERSION 1.1.1 LANGUAGES C CXX)
 
-include(FetchContent)
 include(GNUInstallDirs)
 
 set(CMAKE_C_STANDARD 99)
@@ -17,17 +16,13 @@ set(DRIVER_SOVERSION 1)
 set(VSCP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/vscp)
 set(VSCP_COMMON_DIR ${VSCP_DIR}/src/common)
 set(VSCP_VSCP_COMMON_DIR ${VSCP_DIR}/src/vscp/common)
+set(VSCP_SPDLOG_DIR ${VSCP_DIR}/third_party/spdlog)
 set(DRIVER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-find_package(spdlog CONFIG QUIET)
-if(NOT spdlog_FOUND)
-    FetchContent_Declare(
-        spdlog
-        GIT_REPOSITORY https://github.com/gabime/spdlog.git
-        GIT_TAG v1.15.3
-        GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(spdlog)
+if(EXISTS ${VSCP_SPDLOG_DIR}/CMakeLists.txt)
+    add_subdirectory(${VSCP_SPDLOG_DIR} ${CMAKE_BINARY_DIR}/third_party/spdlog)
+else()
+    message(FATAL_ERROR "Vendored spdlog was not found at ${VSCP_SPDLOG_DIR}")
 endif()
 
 if(TARGET spdlog::spdlog_header_only)
