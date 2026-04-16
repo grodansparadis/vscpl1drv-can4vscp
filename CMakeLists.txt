@@ -68,6 +68,9 @@ if(APPLE)
     # VSCP com.cpp uses Linux-specific ioctl request constants that are not
     # available on macOS. Define them to harmless placeholders for Darwin.
     target_compile_definitions(${DRIVER_TARGET} PRIVATE TCFLSH=0 TIOCSERGETLSR=0)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        set_source_files_properties(${VSCP_COMMON_DIR}/dllist.c PROPERTIES COMPILE_OPTIONS "-Wno-parentheses-equality")
+    endif()
 endif()
 
 target_compile_definitions(${DRIVER_TARGET} PRIVATE _REENTRANT)
