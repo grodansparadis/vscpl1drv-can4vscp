@@ -7,7 +7,7 @@
 //
 // This file is part of the VSCP (http://www.vscp.org)
 //
-// Copyright © 2000-2024 Ake Hedman,
+// Copyright © 2000-2026 Ake Hedman,
 // Ake Hedman, Grodans Paradis AB, <akhe@grodansparadis.com>
 //
 // This file is distributed in the hope that it will be useful,
@@ -688,17 +688,17 @@ public:
 #else
     Comm m_com;
 
-    /*!
-        Configured baudrate
-    */
-    uint8_t m_nBaud;
-
-    /*!
-        The can232 object MUTEX
+    /*! 
+        The can4vscp object MUTEX
      */
     pthread_mutex_t m_can4vscpObjMutex;
 
 #endif
+
+    /*!
+        Configured baudrate
+    */
+    uint8_t m_nBaud;
 
 
     /*!
