@@ -76,7 +76,7 @@ endif()
 target_compile_definitions(${DRIVER_TARGET} PRIVATE _REENTRANT)
 
 if(WIN32)
-    target_compile_definitions(${DRIVER_TARGET} PRIVATE WIN32 _WINDOWS _CRT_SECURE_NO_WARNINGS CAN4VSCPDRV_EXPORTS)
+    target_compile_definitions(${DRIVER_TARGET} PRIVATE WIN32 _WINDOWS UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS CAN4VSCPDRV_EXPORTS)
     target_link_libraries(${DRIVER_TARGET} PRIVATE ${SPDLOG_TARGET} odbc32 odbccp32 ws2_32)
 else()
     target_link_libraries(${DRIVER_TARGET} PRIVATE ${SPDLOG_TARGET} m pthread dl)
