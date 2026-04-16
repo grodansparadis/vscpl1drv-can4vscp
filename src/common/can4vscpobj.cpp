@@ -23,14 +23,12 @@
 
 #include "can4vscpobj.h"
 #include "dlldrvobj.h"
-#include <chrono>
 #include <cstdarg>
 #include <crc8.h>
 #include <ctype.h>
 #include <spdlog/spdlog.h>
 #include <stdio.h>
 #include <string.h>
-#include <thread>
 #include <time.h>
 #include <vscp-serial.h>
 
@@ -73,26 +71,27 @@ void driverLog(spdlog::level::level_enum level, const char *format, ...) {
   spdlog::log(level, "{}", message);
 }
 
-int semaphoreTimedWait(sem_t *psem, uint32_t timeoutMs) {
+int semaphoreTimedWait(vscp_sem_t *psem, uint32_t timeoutMs) {
 #ifdef __APPLE__
-  const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
-
-  for (;;) {
-    if (0 == sem_trywait(psem)) {
+  if (0 == timeoutMs) {
+    const long waitResult = dispatch_semaphore_wait(*psem, DISPATCH_TIME_NOW);
+    if (0 == waitResult) {
       return 0;
     }
 
-    if ((EAGAIN != errno) && (EINTR != errno)) {
-      return -1;
-    }
-
-    if (std::chrono::steady_clock::now() >= deadline) {
-      errno = EAGAIN;
-      return -1;
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    errno = EAGAIN;
+    return -1;
   }
+
+  const dispatch_time_t timeout =
+    dispatch_time(DISPATCH_TIME_NOW, static_cast<int64_t>(timeoutMs) * 1000000LL);
+  const long waitResult = dispatch_semaphore_wait(*psem, timeout);
+  if (0 == waitResult) {
+    return 0;
+  }
+
+  errno = EAGAIN;
+  return -1;
 #else
   struct timespec deadline = {0, 0};
   clock_gettime(CLOCK_REALTIME, &deadline);
@@ -105,6 +104,38 @@ int semaphoreTimedWait(sem_t *psem, uint32_t timeoutMs) {
   }
 
   return sem_timedwait(psem, &deadline);
+#endif
+}
+
+int semaphoreInit(vscp_sem_t *psem, unsigned int initialValue) {
+#ifdef __APPLE__
+  *psem = dispatch_semaphore_create(static_cast<long>(initialValue));
+  return (NULL != *psem) ? 0 : -1;
+#else
+  return sem_init(psem, 0, initialValue);
+#endif
+}
+
+int semaphorePost(vscp_sem_t *psem) {
+#ifdef __APPLE__
+  dispatch_semaphore_signal(*psem);
+  return 0;
+#else
+  return sem_post(psem);
+#endif
+}
+
+int semaphoreDestroy(vscp_sem_t *psem) {
+#ifdef __APPLE__
+#if !OS_OBJECT_USE_OBJC
+  if (NULL != *psem) {
+    dispatch_release(*psem);
+  }
+#endif
+  *psem = NULL;
+  return 0;
+#else
+  return sem_destroy(psem);
 #endif
 }
 
@@ -238,10 +269,10 @@ CCan4VSCPObj::CCan4VSCPObj() {
   pthread_mutex_init(&m_transmitMutex, NULL);
   pthread_mutex_init(&m_responseMutex, NULL);
 
-  sem_init(&m_receiveDataSem, 0, 0);
-  sem_init(&m_transmitDataPutSem, 0, 0);
-  sem_init(&m_transmitDataGetSem, 0, 0);
-  sem_init(&m_transmitAckNackSem, 0, 0);
+  semaphoreInit(&m_receiveDataSem, 0);
+  semaphoreInit(&m_transmitDataPutSem, 0);
+  semaphoreInit(&m_transmitDataGetSem, 0);
+  semaphoreInit(&m_transmitAckNackSem, 0);
 
 #endif
 
@@ -292,10 +323,10 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 
 #else
 
-  sem_destroy(&m_receiveDataSem);
-  sem_destroy(&m_transmitDataPutSem);
-  sem_destroy(&m_transmitDataGetSem);
-  sem_destroy(&m_transmitAckNackSem);
+  semaphoreDestroy(&m_receiveDataSem);
+  semaphoreDestroy(&m_transmitDataPutSem);
+  semaphoreDestroy(&m_transmitDataGetSem);
+  semaphoreDestroy(&m_transmitAckNackSem);
 
   pthread_mutex_destroy(&m_can4vscpMutex);
   pthread_mutex_destroy(&m_receiveMutex);
@@ -948,9 +979,9 @@ int CCan4VSCPObj::close(void)
   SetEvent(m_transmitDataGetEvent);
   ResetEvent(m_transmitAckNackEvent);
 #else
-  sem_post(&m_receiveDataSem);
-  sem_post(&m_transmitDataPutSem);
-  sem_post(&m_transmitDataGetSem);
+  semaphorePost(&m_receiveDataSem);
+  semaphorePost(&m_transmitDataPutSem);
+  semaphorePost(&m_transmitDataGetSem);
   if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
   }
@@ -974,9 +1005,9 @@ int CCan4VSCPObj::close(void)
       break;
   }
 #else
-  sem_destroy(&m_receiveDataSem);
-  sem_destroy(&m_transmitDataPutSem);
-  sem_destroy(&m_transmitDataGetSem);
+  semaphoreDestroy(&m_receiveDataSem);
+  semaphoreDestroy(&m_transmitDataPutSem);
+  semaphoreDestroy(&m_transmitDataGetSem);
   if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores destroyed.");
   }
@@ -1177,7 +1208,7 @@ int CCan4VSCPObj::writeMsg(canalMsg *pMsg) {
 #ifdef WIN32
   SetEvent(m_transmitDataGetEvent);
 #else
-  sem_post(&m_transmitDataGetSem);
+  semaphorePost(&m_transmitDataGetSem);
 #endif
 
   return rv;
@@ -1250,7 +1281,7 @@ int CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout) {
 #ifdef WIN32
   SetEvent(m_transmitDataGetEvent);
 #else
-  sem_post(&m_transmitDataGetSem);
+  semaphorePost(&m_transmitDataGetSem);
 #endif
   return CANAL_ERROR_SUCCESS;
 }
@@ -1284,7 +1315,7 @@ int CCan4VSCPObj::readMsg(canalMsg *pMsg) {
 #ifdef WIN32
     ResetEvent(m_receiveDataEvent);
 #else
-    sem_post(&m_receiveDataSem);
+    semaphorePost(&m_receiveDataSem);
 #endif
   }
   UNLOCK_MUTEX(m_receiveMutex);
@@ -1340,7 +1371,7 @@ int CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout) {
 #ifdef WIN32
       ResetEvent(m_receiveDataEvent);
 #else
-      sem_post(&m_receiveDataSem);
+      semaphorePost(&m_receiveDataSem);
 #endif
     }
     UNLOCK_MUTEX(m_receiveMutex);
@@ -1907,7 +1938,7 @@ bool CCan4VSCPObj::addToResponseQueue(void) {
 #ifdef WIN32
           SetEvent(m_transmitAckNackEvent);
 #else
-          sem_post(&m_transmitAckNackSem);
+          semaphorePost(&m_transmitAckNackSem);
 #endif
         } else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK ==
                    m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE]) {
@@ -1916,7 +1947,7 @@ bool CCan4VSCPObj::addToResponseQueue(void) {
 #ifdef WIN32
           SetEvent(m_transmitAckNackEvent);
 #else
-          sem_post(&m_transmitAckNackSem);
+          semaphorePost(&m_transmitAckNackSem);
 #endif
         }
       }
@@ -2196,7 +2227,7 @@ void CCan4VSCPObj::readSerialData(void) {
 #ifdef WIN32
                 SetEvent(m_receiveDataEvent); // Signal frame in queue
 #else
-                sem_post(&m_receiveDataSem);   // Signal frame in queue
+                semaphorePost(&m_receiveDataSem);   // Signal frame in queue
 #endif
                 UNLOCK_MUTEX(m_receiveMutex);
 
@@ -2293,7 +2324,7 @@ void CCan4VSCPObj::readSerialData(void) {
 #ifdef WIN32
                 SetEvent(m_receiveDataEvent); // Signal frame in queue
 #else
-                sem_post(&m_receiveDataSem);   // Signal frame in queue
+                semaphorePost(&m_receiveDataSem);   // Signal frame in queue
 #endif
                 UNLOCK_MUTEX(m_receiveMutex);
 
@@ -2454,7 +2485,7 @@ void CCan4VSCPObj::readSerialData(void) {
 #ifdef WIN32
                   SetEvent(m_receiveDataEvent); // Signal frame in queue
 #else
-                  sem_post(&m_receiveDataSem); // Signal frame in queue
+                  semaphorePost(&m_receiveDataSem); // Signal frame in queue
 #endif
                   UNLOCK_MUTEX(m_receiveMutex);
 
@@ -2568,7 +2599,7 @@ void CCan4VSCPObj::readSerialData(void) {
 #ifdef WIN32
                   SetEvent(m_receiveDataEvent); // Signal frame in queue
 #else
-                  sem_post(&m_receiveDataSem); // Signal frame in queue
+                  semaphorePost(&m_receiveDataSem); // Signal frame in queue
 #endif
                   UNLOCK_MUTEX(m_receiveMutex);
 

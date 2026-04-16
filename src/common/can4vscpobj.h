@@ -38,7 +38,13 @@
 #define _POSIX
 #include <stdio.h>
 #include <unistd.h>
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+typedef dispatch_semaphore_t vscp_sem_t;
+#else
 #include <semaphore.h>
+typedef sem_t vscp_sem_t;
+#endif
 #include <string.h>
 #include <pthread.h>
 #include <syslog.h>
@@ -605,10 +611,10 @@ public:
     HANDLE m_transmitDataGetEvent;  // GS
     HANDLE m_transmitAckNackEvent;  // Set when ACK/NACK is received for message
 #else
-    sem_t m_receiveDataSem;
-    sem_t m_transmitDataPutSem;
-    sem_t m_transmitDataGetSem;
-    sem_t m_transmitAckNackSem;     // Set when ACK/NACK is received for message
+    vscp_sem_t m_receiveDataSem;
+    vscp_sem_t m_transmitDataPutSem;
+    vscp_sem_t m_transmitDataGetSem;
+    vscp_sem_t m_transmitAckNackSem;     // Set when ACK/NACK is received for message
 #endif
 
     /*!
