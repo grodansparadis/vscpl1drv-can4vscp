@@ -26,9 +26,6 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Install to staging
-        run: cmake --install build --prefix "$PWD/stage"
-
       - name: Create DEB package
         run: cpack --config build/CPackConfig.cmake -G DEB -B "$PWD/dist"
 

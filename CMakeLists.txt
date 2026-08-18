@@ -19,18 +19,14 @@ set(VSCP_VSCP_COMMON_DIR ${VSCP_DIR}/src/vscp/common)
 set(VSCP_SPDLOG_DIR ${VSCP_DIR}/third_party/spdlog)
 set(DRIVER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-if(EXISTS ${VSCP_SPDLOG_DIR}/CMakeLists.txt)
-    add_subdirectory(${VSCP_SPDLOG_DIR} ${CMAKE_BINARY_DIR}/third_party/spdlog)
+if(EXISTS ${VSCP_SPDLOG_DIR}/include)
+    add_library(vscp_spdlog_header_only INTERFACE)
+    target_include_directories(vscp_spdlog_header_only SYSTEM INTERFACE
+        ${VSCP_SPDLOG_DIR}/include
+    )
+    set(SPDLOG_TARGET vscp_spdlog_header_only)
 else()
-    message(FATAL_ERROR "Vendored spdlog was not found at ${VSCP_SPDLOG_DIR}")
-endif()
-
-if(TARGET spdlog::spdlog_header_only)
-    set(SPDLOG_TARGET spdlog::spdlog_header_only)
-elseif(TARGET spdlog::spdlog)
-    set(SPDLOG_TARGET spdlog::spdlog)
-else()
-    message(FATAL_ERROR "spdlog target was not found")
+    message(FATAL_ERROR "Vendored spdlog headers were not found at ${VSCP_SPDLOG_DIR}/include")
 endif()
 
 set(DRIVER_SOURCES
