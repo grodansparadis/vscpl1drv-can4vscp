@@ -24,7 +24,7 @@ jobs:
           gh-code-scanning-compat: true
           max-allowed-issues: 2147483647
 
-      - name: Normalize SARIF run categories
+      - name: Normalize and split SARIF runs
         if: always()
         run: |
           jq '
@@ -34,9 +34,19 @@ jobs:
                 | .value
               )
           ' results.sarif > results.normalized.sarif
+          jq '.runs |= .[:20]' results.normalized.sarif > results.normalized.1.sarif
+          jq '.runs |= .[20:]' results.normalized.sarif > results.normalized.2.sarif
 
-      - name: Upload SARIF to GitHub
+      - name: Upload first SARIF batch to GitHub
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: results.normalized.sarif
+          sarif_file: results.normalized.1.sarif
+          category: codacy-1
+
+      - name: Upload second SARIF batch to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.normalized.2.sarif
+          category: codacy-2
