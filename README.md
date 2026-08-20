@@ -1,9 +1,5 @@
 
-[![Linux CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml)
-
-[![Windows CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml)
-
-[![macOS CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml)
+[![Codacy Analysis](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-analysis.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-analysis.yml) [![Linux CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml)  [![Linux CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml) [![Windows CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml) [![macOS CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml)
 
 # vscpl1drv-can4vscp - VSCP Level I CAN4VSCP Serial Driver
 
@@ -19,7 +15,7 @@ As the VSCP serial protocol is very generic this free serial protocol may also b
 
 ## Platforms
 
-* Linux
+* Linux (amd64, Raspberry Pi)
 * Windows
 * macOS
 
