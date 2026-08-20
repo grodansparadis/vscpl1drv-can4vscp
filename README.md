@@ -1,6 +1,13 @@
+
+[![Linux CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml)
+
+[![Windows CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml)
+
+[![macOS CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml)
+
 # vscpl1drv-can4vscp - VSCP Level I CAN4VSCP Serial Driver
 
-<img src="https://vscp.org/images/logo.png" width="100">
+![VSCP Logo](https://github.com/grodansparadis/vscp-logo/blob/master/logo_100.png)
 
 vscpl1drv-can4vscp is a VSCP level I driver ([CANAL driver](https://docs.vscp.org/#canal)) for hardware devices that export there inner functionality with the [VSCP standard serial protocol (CAN4VSCP)](https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232?id=general-frame-format). A typical such device is the [Frankfurt RS-232 module](http://www.grodansparadis.com/frankfurt/rs232/frankfurt-rs232.html) from [Grodans Paradis AB](https://www.grodansparadis.com).
 
