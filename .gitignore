@@ -28,6 +28,9 @@
 
 # Executables
 *.exe
+
+# Codacy local analysis output
+codacy-results.sarif
 *.out
 *.app
 

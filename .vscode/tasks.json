@@ -56,5 +56,16 @@
             },
             "problemMatcher": "$gcc"
         },
+        {
+            "taskName": "codacy check",
+            "type": "shell",
+            "command": "./codacy_check.sh",
+            "args": [],
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            },
+            "problemMatcher": []
+        },
     ]
 }
