@@ -63,7 +63,6 @@
 # 0x03  - ETX
 
 import sys
-import time
 import serial   # https://pythonhosted.org/pyserial/pyserial.html
 import crc8     # https://pypi.org/project/crc8/
 
@@ -91,9 +90,9 @@ ser = serial.Serial(
 	bytesize = serial.EIGHTBITS
 )
 
-hash = crc8.crc8()
-hash.update(b'\xff\x00\x00\x00\x01\x04')
-print('CRC: ' + hash.hexdigest())
+crc_hash = crc8.crc8()
+crc_hash.update(b'\xff\x00\x00\x00\x01\x04')
+print('CRC: ' + crc_hash.hexdigest())
 
 ser.isOpen()
 

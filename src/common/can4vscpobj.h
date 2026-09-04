@@ -59,6 +59,8 @@ typedef sem_t vscp_sem_t;
 #include <canal-macro.h>
 #include <dllist.h>
 
+#include "can4vscp-protocol.h"
+
 // define to create a file c:/tmp/can4vscp.txt with input and
 // stat machine data for debugging
 //#define DEBUG_CAN4VSCP_RECEIVE
@@ -70,7 +72,11 @@ typedef sem_t vscp_sem_t;
 #define CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE             0x0020
 #define CAN4VSCP_FLAG_ENABLE_REOPEN                         0x0040
 #define CAN4VSCP_FLAG_ENABLE_STRICT                         0x0080
+#define CAN4VSCP_FLAG_ENABLE_UDP_DEBUG                      0x40000000
 #define CAN4VSCP_FLAG_ENABLE_DEBUG                          0x80000000
+
+// Default target port for UDP debug output
+#define CAN4VSCP_UDP_DEBUG_DEFAULT_PORT                     9999
 // Mutexes
 #define CANAL_DLL_CAN4VSCPDRV_OBJ_MUTEX	                    TEXT("___CANAL__DLL_CAN4VSCPDRV_OBJ_MUTEX____")
 #define CANAL_DLL_CAN4VSCPDRV_RECEIVE_MUTEX                 TEXT("___CANAL__DLL_CAN4VSCPDRV_RECEIVE_MUTEX____")
@@ -86,85 +92,9 @@ typedef sem_t vscp_sem_t;
 // Max number of response messages in response queue
 #define CAN4VSCP_MAX_RESPONSEMSG	                        32
 
-// Byte stuffing start and end characters
-#define DLE                                                 0x10
-#define STX                                                 0x02
-#define ETX                                                 0x03
-
-// RX State machine
-#define INCOMING_STATE_NONE                                 0	// Waiting for <STX>
-#define INCOMING_STATE_STX                                  1	// Reading data
-#define INCOMING_STATE_ETX                                  2	// <ETX> has been received
-#define INCOMING_STATE_COMPLETE                             3	// Frame received
-
-#define INCOMING_SUBSTATE_NONE                              0	// Idle
-#define INCOMING_SUBSTATE_DLE                               1	// <DLE> received
-
-
-// CAN4VSCP Commands
-#define RESET_NOOP                                          0x00	// No Operation
-#define	GET_TX_ERR_CNT                                      0x02	// Get TX error count
-#define	GET_RX_ERR_CNT                                      0x03	// Get RX error count
-#define	GET_CANSTAT                                         0x04	// Get CAN statistics
-#define	GET_COMSTAT                                         0x05
-#define	GET_MSGFILTER1                                      0x06	// Get message filter 1
-#define	GET_MSGFILTER2                                      0x07	// Get message filter 2
-#define	SET_MSGFILTER1                                      0x08	// Set message filter 1
-#define	SET_MSGFILTER2                                      0x09	// Set message filter 2
-
-
-// Emergency flags
-#define EMERGENCY_OVERFLOW                                  0x01
-#define EMERGENCY_RCV_WARNING                               0x02
-#define EMERGENCY_TX_WARNING                                0x04
-#define EMERGENCY_TXBUS_PASSIVE                             0x08
-#define EMERGENCY_RXBUS_PASSIVE                             0x10
-#define EMERGENCY_BUS_OFF                                   0x20
-
-// VSCP Driver positions in frame
-#define VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE                 0
-#define VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL              1
-#define VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY             2
-#define VSCP_CAN4VSCP_DRIVER_POS_FRAME_SIZE_PAYLOAD_MSB     3
-#define VSCP_CAN4VSCP_DRIVER_POS_FRAME_SIZE_PAYLOAD_LSB     4
-#define VSCP_CAN4VSCP_DRIVER_POS_FRAME_PAYLOAD              5
-
-// VSCP driver commands
-#define VSCP_CAN4VSCP_DRIVER_COMMAND_NOOP                   0
-#define VSCP_CAN4VSCP_DRIVER_COMMAND_OPEN                   1
-#define VSCP_CAN4VSCP_DRIVER_COMMAND_LISTEN                 2
-#define VSCP_CAN4VSCP_DRIVER_COMMAND_LOOPBACK               3
-#define VSCP_CAN4VSCP_DRIVER_COMMAND_CLOSE                  4
-#define VSCP_CAN4VSCP_DRIVER_COMMAND_SET_FILTER             5
-#define VSCP_CAN4VSCP_DRIVER_COMMAND_SET_MASK               6
-
-// VSCP driver configuration
-#define VSCP_DRIVER_CONFIG_NOOP                             0
-#define VSCP_DRIVER_CONFIG_MODE                             1
-#define VSCP_DRIVER_CONFIG_TIMESTAMP                        2
-#define VSCP_DRIVER_CONFIG_BAUDRATE                         3
-
-
 // Capabilities for this driver
 #define CAN4VSCP_DRIVER_MAX_VSCP_FRAMES                     2
 #define CAN4VSCP_DRIVER_MAX_CANAL_FRAMES                    10
-
-// Baudrate codes
-#define SET_BAUDRATE_115200                                 0
-#define SET_BAUDRATE_128000                                 1
-#define SET_BAUDRATE_230400                                 2
-#define SET_BAUDRATE_256000                                 3
-#define SET_BAUDRATE_460800                                 4
-#define SET_BAUDRATE_500000                                 5
-#define SET_BAUDRATE_625000                                 6
-#define SET_BAUDRATE_921600                                 7
-#define SET_BAUDRATE_1000000                                8
-#define SET_BAUDRATE_9600                                   9
-#define SET_BAUDRATE_19200                                  10
-#define SET_BAUDRATE_38400                                  11
-#define SET_BAUDRATE_57600                                  12
-
-#define SET_BAUDRATE_MAX                                    13
 
 // Define soft open timeout in microsecons
 // If enabled i/f inactivity more than tyhis timeout
@@ -686,6 +616,14 @@ public:
         if bit 31 is set in initflags.
     */
     bool m_bDebug;
+
+    /*!
+        Mirror debug messages as UDP datagrams to a
+        configurable host:port if bit 30 is set in initflags
+        or a UDP debug target is given in the configuration
+        string.
+    */
+    bool m_bUdpDebug;
 
 
 

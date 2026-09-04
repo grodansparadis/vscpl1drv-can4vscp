@@ -35,15 +35,138 @@
 #ifdef WIN32
 #include "callback.h"
 #else
+#include <arpa/inet.h>
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #endif
 
+#include <mutex>
 #include <string>
 #include <vector>
 
 namespace {
+
+// Sends driver debug output as UDP datagrams to a configurable target
+class UdpDebugSink {
+public:
+  bool open(const char *host, unsigned short port) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    closeUnlocked();
+
+    memset(&m_addr, 0, sizeof(m_addr));
+    m_addr.sin_family = AF_INET;
+    m_addr.sin_port = htons(port);
+
+#ifdef WIN32
+    WSADATA wsaData;
+    if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
+      return false;
+    }
+    m_bWsaInit = true;
+    unsigned long ip = inet_addr(host);
+    if (INADDR_NONE == ip) {
+      hostent *phe = gethostbyname(host);
+      if ((NULL == phe) || (NULL == phe->h_addr_list[0])) {
+        closeUnlocked();
+        return false;
+      }
+      memcpy(&m_addr.sin_addr, phe->h_addr_list[0], sizeof(m_addr.sin_addr));
+    }
+    else {
+      m_addr.sin_addr.s_addr = ip;
+    }
+    m_sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (INVALID_SOCKET == m_sock) {
+      closeUnlocked();
+      return false;
+    }
+#else
+    addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    addrinfo *pres = NULL;
+    if ((0 != getaddrinfo(host, NULL, &hints, &pres)) || (NULL == pres)) {
+      return false;
+    }
+    memcpy(&m_addr.sin_addr,
+           &(reinterpret_cast<sockaddr_in *>(pres->ai_addr))->sin_addr,
+           sizeof(m_addr.sin_addr));
+    freeaddrinfo(pres);
+    m_sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+    if (m_sock < 0) {
+      m_sock = -1;
+      return false;
+    }
+#endif
+    return true;
+  }
+
+  void close() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    closeUnlocked();
+  }
+
+  bool isOpen() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+#ifdef WIN32
+    return (INVALID_SOCKET != m_sock);
+#else
+    return (-1 != m_sock);
+#endif
+  }
+
+  void send(const std::string &msg) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+#ifdef WIN32
+    if (INVALID_SOCKET == m_sock) {
+      return;
+    }
+    (void)::sendto(m_sock, msg.c_str(), static_cast<int>(msg.size()), 0,
+                   reinterpret_cast<const sockaddr *>(&m_addr), sizeof(m_addr));
+#else
+    if (-1 == m_sock) {
+      return;
+    }
+    (void)::sendto(m_sock, msg.c_str(), msg.size(), 0,
+                   reinterpret_cast<const sockaddr *>(&m_addr), sizeof(m_addr));
+#endif
+  }
+
+private:
+  void closeUnlocked() {
+#ifdef WIN32
+    if (INVALID_SOCKET != m_sock) {
+      closesocket(m_sock);
+      m_sock = INVALID_SOCKET;
+    }
+    if (m_bWsaInit) {
+      WSACleanup();
+      m_bWsaInit = false;
+    }
+#else
+    if (-1 != m_sock) {
+      ::close(m_sock);
+      m_sock = -1;
+    }
+#endif
+  }
+
+  std::mutex m_mutex;
+  sockaddr_in m_addr;
+#ifdef WIN32
+  SOCKET m_sock = INVALID_SOCKET;
+  bool m_bWsaInit = false;
+#else
+  int m_sock = -1;
+#endif
+};
+
+UdpDebugSink gUdpDebugSink;
 
 void driverLog(spdlog::level::level_enum level, const char *format, ...) {
   va_list args;
@@ -69,6 +192,15 @@ void driverLog(spdlog::level::level_enum level, const char *format, ...) {
   }
 
   spdlog::log(level, "{}", message);
+
+  // Mirror the message to the UDP debug target if enabled
+  if (gUdpDebugSink.isOpen()) {
+    const spdlog::string_view_t lvl = spdlog::level::to_string_view(level);
+    std::string datagram(lvl.data(), lvl.size());
+    datagram += ": ";
+    datagram += message;
+    gUdpDebugSink.send(datagram);
+  }
 }
 
 #ifndef WIN32
@@ -153,27 +285,6 @@ void *workThreadReceive(void *pObject);
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-// addWithEscape
-//
-//
-
-static uint8_t addWithEscape(uint8_t *p, char c, uint8_t *pcrc) {
-  if (DLE == c) {
-    *p = DLE;
-    if (NULL != pcrc)
-      crc8(pcrc, DLE);
-    *(p + 1) = DLE;
-    // !!! CRC only calculated over one DLE !!!
-    return 2;
-  } else {
-    *p = c;
-    if (NULL != pcrc)
-      crc8(pcrc, c);
-    return 1;
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // getClockMilliseconds
 //
 //
@@ -228,6 +339,7 @@ CCan4VSCPObj::CCan4VSCPObj() {
   m_bOpen = false;
   m_bDebug = false;
   m_bStrict = false;
+  m_bUdpDebug = false;
 
   m_RxMsgState = INCOMING_STATE_NONE;
   m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
@@ -346,7 +458,7 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 //-----------------------------------------------------------------------------
 // Parameters for the driver as a string on the following form
 //
-// "comport[;nBaud]"
+// "comport[;nBaud[;udphost[:udpport]]]"
 //
 //
 // comport
@@ -356,6 +468,11 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 //
 // Baudrate is always 115200. Not true anymore. Can be changed temprarily with
 // baudrate code.
+//
+// udphost[:udpport]
+// =================
+//  Optional VSCP-UDP debug target. If given, all driver debug output is
+//  also sent as UDP datagrams to this host. Default port is 9999.
 //
 // flags
 //-----------------------------------------------------------------------------
@@ -396,6 +513,12 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 // =====
 //  0  - Try to continue even if errors occurs.
 //  1  - Strict mode. Give up on all errors.
+//
+// bit 30
+// ======
+//  0  - No UDP debug output
+//  1  - Send debug output as UDP datagrams (default target 127.0.0.1:9999,
+//       override with udphost[:udpport] in the configuration string)
 //
 // bit 31
 // ======
@@ -504,6 +627,41 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     // Check if a valid code
     if (m_nBaud > (SET_BAUDRATE_MAX - 1)) {
       m_nBaud = SET_BAUDRATE_115200;
+    }
+  }
+
+  // Optional UDP debug target "udphost[:udpport]"
+  char udpHost[256] = {0};
+  unsigned short udpPort = CAN4VSCP_UDP_DEBUG_DEFAULT_PORT;
+  p = strtok(NULL, ";");
+  if ((NULL != p) && *p) {
+    strncpy(udpHost, p, sizeof(udpHost) - 1);
+    char *pColon = strrchr(udpHost, ':');
+    if (NULL != pColon) {
+      *pColon = 0;
+      const int portval = atoi(pColon + 1);
+      if ((portval > 0) && (portval < 65536)) {
+        udpPort = (unsigned short)portval;
+      }
+    }
+  }
+
+  // Enable UDP debug if a target is configured or flag bit 30 is set
+  if (udpHost[0] || (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG)) {
+    if (!udpHost[0]) {
+      strcpy(udpHost, "127.0.0.1");
+    }
+    if (gUdpDebugSink.open(udpHost, udpPort)) {
+      m_bUdpDebug = true;
+      m_bDebug = true; // UDP debug implies debug logging
+      driverLog(spdlog::level::info,
+                "[vscpl1drv-can4vscp] UDP debug enabled, target %s:%u",
+                udpHost, (unsigned)udpPort);
+    }
+    else {
+      driverLog(spdlog::level::err,
+                "[vscpl1drv-can4vscp] Failed to enable UDP debug (target %s:%u)",
+                udpHost, (unsigned)udpPort);
     }
   }
 
@@ -1040,6 +1198,12 @@ int CCan4VSCPObj::close(void)
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Driver close success");
   }
 
+  // Shut down UDP debug output
+  if (m_bUdpDebug) {
+    gUdpDebugSink.close();
+    m_bUdpDebug = false;
+  }
+
   return CANAL_ERROR_SUCCESS;
 }
 
@@ -1436,45 +1600,20 @@ int CCan4VSCPObj::getStatus(PCANALSTATUS pCanalStatus)
 //
 
 bool CCan4VSCPObj::getDeviceCapabilities(void) {
-  uint8_t crc = 0;
-  uint8_t pos = 0;
   uint8_t sendData[512];
 
-  sendData[pos++] = DLE;
-  sendData[pos++] = STX;
-
-  // Frame type
-  sendData[pos++] = VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_REQUEST;
-  crc8(&crc, VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_REQUEST);
-
-  // Channel
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Sequency number
-  pos += addWithEscape(sendData + pos, m_sequencyno++, &crc);
-
-  // Size of payload
-  pos += addWithEscape(sendData + pos, 0, &crc);
-  pos += addWithEscape(sendData + pos, 2, &crc);
-
   // Payload: Our capabilities
-  pos += addWithEscape(sendData + pos, 1, &crc);
-  pos += addWithEscape(sendData + pos, 10, &crc);
-
-  // Checksum
-  pos += addWithEscape(sendData + pos, crc, NULL);
-
-  // End of frame
-  sendData[pos++] = DLE;
-  sendData[pos++] = ETX;
+  const uint8_t payload[2] = {1, 10};
+  const uint16_t len =
+      can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_REQUEST,
+                          0, m_sequencyno++, 2, payload, 2);
 
   // Empty reply list
   LOCK_MUTEX(m_responseMutex);
   dll_removeAllNodes(&m_responseList);
   UNLOCK_MUTEX(m_responseMutex);
 
-  if (!sendMsg(sendData, pos))
+  if (!sendMsg(sendData, len))
     return FALSE;
 
   // Wait for reply
@@ -1556,51 +1695,27 @@ bool CCan4VSCPObj::sendMsg(uint8_t *buffer, short size) {
 //
 
 bool CCan4VSCPObj::sendCommand(uint8_t cmdcode, uint8_t *pParam, uint8_t size) {
-  uint8_t crc = 0;
-  uint8_t pos = 0;
   uint8_t sendData[512];
+  uint8_t payload[256 + 1];
+  uint16_t lenPayload = 0;
 
-  sendData[pos++] = DLE;
-  sendData[pos++] = STX;
-
-  // Frame type
-  sendData[pos++] = VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND;
-  crc8(&crc, VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND);
-
-  // Channel
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Sequency number
-  pos += addWithEscape(sendData + pos, m_sequencyno++, &crc);
-
-  // Size of payload
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-  pos += addWithEscape(sendData + pos, ((size + 1) & 0xff), &crc);
-
-  // Command code
-  pos += addWithEscape(sendData + pos, cmdcode, &crc);
-
+  // Command code + parameters
+  payload[lenPayload++] = cmdcode;
   if (size) {
-    for (int i = 0; i < size; i++) {
-      pos += addWithEscape(sendData + pos, pParam[i], &crc);
-    }
+    memcpy(payload + lenPayload, pParam, size);
+    lenPayload += size;
   }
 
-  // Checksum
-  pos += addWithEscape(sendData + pos, crc, NULL);
-
-  // End of frame
-  sendData[pos++] = DLE;
-  sendData[pos++] = ETX;
+  const uint16_t len = can4vscp_buildFrame(
+      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND, 0, m_sequencyno++,
+      (uint16_t)((size + 1) & 0xff), payload, lenPayload);
 
   // Empty reply list
   LOCK_MUTEX(m_responseMutex);
   dll_removeAllNodes(&m_responseList);
   UNLOCK_MUTEX(m_responseMutex);
 
-  return sendMsg(sendData, pos);
+  return sendMsg(sendData, len);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1660,51 +1775,27 @@ bool CCan4VSCPObj::sendCommandWait(uint8_t cmdcode, uint8_t *pParam,
 
 bool CCan4VSCPObj::sendConfig(uint8_t codeConfig, uint8_t *pParam,
                               uint8_t size) {
-  uint8_t crc = 0;
-  uint8_t pos = 0;
   uint8_t sendData[512];
+  uint8_t payload[256 + 1];
+  uint16_t lenPayload = 0;
 
-  sendData[pos++] = DLE;
-  sendData[pos++] = STX;
-
-  // Frame type
-  sendData[pos++] = VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE;
-  crc8(&crc, VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE);
-
-  // Channel
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Sequency number
-  pos += addWithEscape(sendData + pos, m_sequencyno++, &crc);
-
-  // Size of payload
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-  pos += addWithEscape(sendData + pos, (size & 0xff), &crc);
-
-  // Command code
-  pos += addWithEscape(sendData + pos, codeConfig, &crc);
-
+  // Config code + parameters
+  payload[lenPayload++] = codeConfig;
   if (size) {
-    for (int i = 0; i < size; i++) {
-      pos += addWithEscape(sendData + pos, pParam[i], &crc);
-    }
+    memcpy(payload + lenPayload, pParam, size);
+    lenPayload += size;
   }
 
-  // Checksum
-  pos += addWithEscape(sendData + pos, crc, NULL);
-
-  // End of frame
-  sendData[pos++] = DLE;
-  sendData[pos++] = ETX;
+  const uint16_t len = can4vscp_buildFrame(
+      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE, 0, m_sequencyno++,
+      (uint16_t)(size & 0xff), payload, lenPayload);
 
   // Empty reply list
   LOCK_MUTEX(m_responseMutex);
   dll_removeAllNodes(&m_responseList);
   UNLOCK_MUTEX(m_responseMutex);
 
-  return sendMsg(sendData, pos);
+  return sendMsg(sendData, len);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1768,13 +1859,7 @@ bool CCan4VSCPObj::sendConfigWait(uint8_t codeConfig, uint8_t *pParam,
 //
 
 bool CCan4VSCPObj::checkCRC(void) {
-  uint8_t crc = 0;
-
-  for (int i = 0; i < m_lengthMsgRcv - 1; i++) {
-    crc8(&crc, m_bufferMsgRcv[i]);
-  }
-
-  return (crc == m_bufferMsgRcv[m_lengthMsgRcv - 1]);
+  return (0 != can4vscp_checkCRC(m_bufferMsgRcv, m_lengthMsgRcv));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1783,41 +1868,15 @@ bool CCan4VSCPObj::checkCRC(void) {
 //
 
 void CCan4VSCPObj::sendACK(uint8_t seq) {
-  uint8_t crc = 0;
-  uint8_t pos = 0;
-  uint8_t sendData[10]; // No Level II events in this driver
+  uint8_t sendData[16];
 
-  sendData[pos++] = DLE;
-  sendData[pos++] = STX;
-
-  // Frame type
-  sendData[pos++] = VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK;
-  crc8(&crc, VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK);
-
-  // Channel
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Sequency number
-  pos += addWithEscape(sendData + pos, seq, &crc);
-
-  // Size of payload
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Checksum
-  pos += addWithEscape(sendData + pos, crc, NULL);
-
-  // End of frame
-  sendData[pos++] = DLE;
-  sendData[pos++] = ETX;
+  const uint16_t len = can4vscp_buildFrame(
+      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK, 0, seq, 0, NULL, 0);
 
   LOCK_MUTEX(m_can4vscpMutex);
 
   // Send the event
-  sendMsg(sendData, pos);
+  sendMsg(sendData, len);
 
   UNLOCK_MUTEX(m_can4vscpMutex);
 }
@@ -1828,41 +1887,15 @@ void CCan4VSCPObj::sendACK(uint8_t seq) {
 //
 
 void CCan4VSCPObj::sendNACK(uint8_t seq) {
-  uint8_t crc = 0;
-  uint8_t pos = 0;
-  uint8_t sendData[10]; // No Level II events in this driver
+  uint8_t sendData[16];
 
-  sendData[pos++] = DLE;
-  sendData[pos++] = STX;
-
-  // Frame type
-  sendData[pos++] = VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK;
-  crc8(&crc, VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK);
-
-  // Channel
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Sequency number
-  pos += addWithEscape(sendData + pos, seq, &crc);
-
-  // Size of payload
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Checksum
-  pos += addWithEscape(sendData + pos, crc, NULL);
-
-  // End of frame
-  sendData[pos++] = DLE;
-  sendData[pos++] = ETX;
+  const uint16_t len = can4vscp_buildFrame(
+      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK, 0, seq, 0, NULL, 0);
 
   LOCK_MUTEX(m_can4vscpMutex);
 
   // Send the event
-  sendMsg(sendData, pos);
+  sendMsg(sendData, len);
 
   UNLOCK_MUTEX(m_can4vscpMutex);
 }
@@ -1873,41 +1906,16 @@ void CCan4VSCPObj::sendNACK(uint8_t seq) {
 //
 
 void CCan4VSCPObj::sendNoopFrame(void) {
-  uint8_t crc = 0;
-  uint8_t pos = 0;
-  uint8_t sendData[10]; // No Level II events in this driver
+  uint8_t sendData[16];
 
-  sendData[pos++] = DLE;
-  sendData[pos++] = STX;
-
-  // Frame type
-  sendData[pos++] = VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP;
-  crc8(&crc, VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP);
-
-  // Channel
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Sequency number
-  pos += addWithEscape(sendData + pos, m_sequencyno++, &crc);
-
-  // Size of payload
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Checksum
-  pos += addWithEscape(sendData + pos, crc, NULL);
-
-  // End of frame
-  sendData[pos++] = DLE;
-  sendData[pos++] = ETX;
+  const uint16_t len =
+      can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP, 0,
+                          m_sequencyno++, 0, NULL, 0);
 
   LOCK_MUTEX(m_can4vscpMutex);
 
   // Send the event
-  sendMsg(sendData, pos);
+  sendMsg(sendData, len);
 
   UNLOCK_MUTEX(m_can4vscpMutex);
 }
@@ -2723,46 +2731,24 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
   // [len-2]  DLE
   // [len-1]  ETX
 
-  uint8_t crc = 0;
-  uint8_t pos = 0;
   uint8_t sendData[128]; // No Level II events in this driver
-
-  sendData[pos++] = DLE;
-  sendData[pos++] = STX;
-
-  // Frame type
-  sendData[pos++] = VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL;
-  crc8(&crc, VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL);
-
-  // Channel
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-
-  // Sequency number
-  pos += addWithEscape(sendData + pos, (*pseq)++, &crc);
-
-  // Size of payload  4 + datalen
-  sendData[pos++] = 0;
-  crc8(&crc, 0);
-  pos += addWithEscape(sendData + pos, 4 + msg.sizeData, &crc);
+  uint8_t payload[4 + 8];
+  uint16_t lenPayload = 0;
 
   // id
-  pos += addWithEscape(sendData + pos, (msg.id >> 24) & 0xff, &crc);
-  pos += addWithEscape(sendData + pos, (msg.id >> 16) & 0xff, &crc);
-  pos += addWithEscape(sendData + pos, (msg.id >> 8) & 0xff, &crc);
-  pos += addWithEscape(sendData + pos, msg.id & 0xff, &crc);
+  payload[lenPayload++] = (msg.id >> 24) & 0xff;
+  payload[lenPayload++] = (msg.id >> 16) & 0xff;
+  payload[lenPayload++] = (msg.id >> 8) & 0xff;
+  payload[lenPayload++] = msg.id & 0xff;
 
   // Data
   for (int i = 0; i < msg.sizeData; i++) {
-    pos += addWithEscape(sendData + pos, msg.data[i], &crc);
+    payload[lenPayload++] = msg.data[i];
   }
 
-  // Checksum
-  pos += addWithEscape(sendData + pos, crc, NULL);
-
-  // End of frame
-  sendData[pos++] = DLE;
-  sendData[pos++] = ETX;
+  const uint16_t len = can4vscp_buildFrame(
+      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL, 0, (*pseq)++,
+      (uint16_t)(4 + msg.sizeData), payload, lenPayload);
 
   // Clear ACK/NACK structure
   pobj->msgResponseInfo.bAck = false; // We start out being pessimistic
@@ -2771,7 +2757,7 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
   pobj->msgResponseInfo.seq = *pseq - 1; // Sequency for frame
 
   // Send the event
-  if (!pobj->sendMsg(sendData, pos)) {
+  if (!pobj->sendMsg(sendData, len)) {
     return false;
   }
 

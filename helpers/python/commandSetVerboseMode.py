@@ -47,7 +47,6 @@
 # 0x03  - ETX
 
 import sys
-import time
 import serial   # https://pythonhosted.org/pyserial/pyserial.html
 import crc8     # https://pypi.org/project/crc8/
 
@@ -75,16 +74,16 @@ ser = serial.Serial(
 	bytesize = serial.EIGHTBITS
 )
 
-hash = crc8.crc8()
-hash.update(b'\x03\x00\x00\x00\x02\x01\x00')
-print('CRC: ' + hash.hexdigest())
+crc_hash = crc8.crc8()
+crc_hash.update(b'\x03\x00\x00\x00\x02\x01\x00')
+print('CRC: ' + crc_hash.hexdigest())
 
 ser.isOpen()
 
 # Send the can4vscp 'set mode' frame
 for i in range(3):
     ser.write(b'\x10\x02\x03\x00\x00\x00\x02\x01\x00')
-    ser.write(hash.digest())
+    ser.write(crc_hash.digest())
     ser.write(b'\x10\x03')
 
 bDle = False

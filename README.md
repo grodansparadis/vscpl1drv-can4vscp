@@ -1,5 +1,5 @@
 
-[![Codacy Analysis](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-analysis.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-analysis.yml) [![Linux CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml)  [![Linux CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml) [![Windows CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml) [![macOS CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml)
+[![Linux CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-linux.yml) [![Windows CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-windows.yml) [![macOS CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-macos.yml) [![Raspberry Pi 32-bit (armhf) CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-raspberry-pi-armhf.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-raspberry-pi-armhf.yml) [![Raspberry Pi 64-bit (arm64) CI](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-raspberry-pi-arm64.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/ci-raspberry-pi-arm64.yml) [![Codacy Check](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-check.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-check.yml) [![Codacy Analysis](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-analysis.yml/badge.svg)](https://github.com/grodansparadis/vscpl1drv-can4vscp/actions/workflows/codacy-analysis.yml)
 
 # vscpl1drv-can4vscp - VSCP Level I CAN4VSCP Serial Driver
 
@@ -44,7 +44,7 @@ From version 14.0.0 the driver is installed in */program files/vscpd/drivers/lev
 All level I drivers are configured using a semicolon separated configuration string.
 
 ```bash
-port[;nBaud]
+port[;nBaud[;udphost[:udpport]]]
 ```
 
 ### port
@@ -57,12 +57,16 @@ This parameter is mandatory.
 
 The second parameter is the serial baudrate and defaults to **5** which is the code for 115200 Baud.
 
+### udphost[:udpport]
+
+The third parameter is optional and enables [UDP debugging](#debugging). If given, all driver debug output is also sent as UDP datagrams to this host. The port defaults to **9999**.
+
 ## Configuration string -  Linux
 
 All level I drivers are configured using a semicolon separated configuration string.
 
 ```bash
-port[;nBaud]
+port[;nBaud[;udphost[:udpport]]]
 ```
 
 ### port
@@ -131,8 +135,51 @@ Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu
  | Bit 4    | Enable timestamp. The timestamp will be written by the hardware instead of the driver. |
  | Bit 5    | Enable hardware handshake.  |
  | Bit 6 | Enable strict mode. Driver will terminate on all errors.  |
- | Bit 7-30 | Reserved.  |
+ | Bit 7-29 | Reserved.  |
+ | Bit 30 | Enable UDP debugging (0x40000000). Debug output is sent as UDP datagrams to 127.0.0.1:9999 or to the target given as *udphost[:udpport]* in the configuration string. See [Debugging](#debugging). |
  | Bit 31 | Enable debug messages to LOG_DEBUG, syslog (0x80000000).  |
+
+## Debugging
+
+The driver has two debug facilities that can be used to investigate problems.
+
+### Debug logging (flag bit 31)
+
+Set bit 31 (**0x80000000**) in the driver flags to make the driver write verbose debug messages using the standard log output (spdlog/syslog) of the host application.
+
+```xml
+flags="0x80000000"
+```
+
+### UDP debugging (flag bit 30 or configuration string)
+
+The driver can mirror all its debug output as text datagrams over UDP (VSCP-UDP debugging). This makes it possible to follow driver internals live from another machine without touching the log configuration of the host application. Enabling UDP debugging implicitly enables debug logging.
+
+Enable it in one of two ways:
+
+1. Add the target as the third parameter of the configuration string. The port defaults to **9999**.
+
+```xml
+config="/dev/ttyUSB0;0;192.168.1.20:9999"
+```
+
+2. Set bit 30 (**0x40000000**) in the driver flags to send to the default target 127.0.0.1:9999.
+
+```xml
+flags="0x40000000"
+```
+
+Listen to the debug stream with any UDP tool, for example
+
+```bash
+nc -klu 9999
+```
+
+Each datagram is a single log line on the form `level: message`, e.g.
+
+```
+debug: [vscpl1drv-can4vscp] Open of port [/dev/ttyUSB0] successful
+```
 
 ## Status return
 
@@ -175,7 +222,7 @@ using the latest version from the repositories [release section](https://github.
 
 or
 
-```
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 sudo cmake --install build
@@ -206,9 +253,9 @@ sudo touch  50-myusb.rules
 sudo vim 50-myusb.rules 
 ```
 
-add 
+add
 
-```
+```bash
 KERNEL=="ttyUSB[0-9]*",MODE="0666"
 ```
 
@@ -303,7 +350,7 @@ The repository CI includes a Homebrew install step on macOS from the generated C
 
 ### Enable debug output
 
-Set bit 32 of flags (0x8000000) to enable debug output to syslog. This will give diagnostic info that will help to solve many problems. Check the log with
+Set bit 32 of flags (0x8000000) to enable debug output to syslog. This will give diagnostic info that will help to solve many problems. On Linux check the log with
 
 ```bash
 cat /var/log/syslog | grep vscpd

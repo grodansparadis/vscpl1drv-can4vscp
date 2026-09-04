@@ -1,0 +1,26 @@
+name: Codacy Check
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  codacy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Run Codacy check
+        run: ./codacy_check.sh
+
+      - name: Upload SARIF report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codacy-check-sarif
+          path: codacy-results.sarif

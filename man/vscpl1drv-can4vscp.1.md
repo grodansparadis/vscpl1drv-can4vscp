@@ -24,7 +24,7 @@ As the VSCP serial protocol is very generic this free serial protocol may also b
 
 
 ```
-port[;nBaud]
+port[;nBaud[;udphost[:udpport]]]
 ```
 
 #### port
@@ -33,10 +33,13 @@ The first parameter is the serial port to use (COM1, COM2 and so on). This param
 #### nBaud
 The second parameter is the serial baudrate and defaults to 5 which is the code for 115200 Baud.
 
+#### udphost[:udpport]
+The third parameter is optional and enables UDP debugging. If given, all driver debug output is also sent as UDP datagrams to this host. The port defaults to 9999. See the DEBUGGING section.
+
 ### Configuration string - Linux
 
 ```
-port[;nBaud]
+port[;nBaud[;udphost[:udpport]]]
 ```
 
 #### port
@@ -44,6 +47,9 @@ The first parameter is the serial port to use (*/dev/ttyS0*, */dev/ttyS1*, */dev
 
 #### nBaud
 The second parameter is the serial baudrate and defaults to 5 which is the code for 115200 Baud.
+
+#### udphost[:udpport]
+The third parameter is optional and enables UDP debugging. If given, all driver debug output is also sent as UDP datagrams to this host. The port defaults to 9999. See the DEBUGGING section.
 
 ### Baudrate codes
 | Baudrate | Code | Error  | Windows | Linux |
@@ -87,8 +93,31 @@ Typical settings for VSCP daemon config
  | Bit 4    | Enable timestamp. The timestamp will be written by the hardware instead of the driver. |
  | Bit 5    | Enable hardware handshake.  |
  | Bit 6 | Enable strict mode. Driver will terminate on all errors.  |
- | Bit 7-30 | Reserved.  |
+ | Bit 7-29 | Reserved.  |
+ | Bit 30 | Enable UDP debugging. Debug output is sent as UDP datagrams to 127.0.0.1:9999 or to the target given as *udphost[:udpport]* in the configuration string. |
  | Bit 31 | Enable debug messages to LOG_DEBUG, syslog.  |
+
+## Debugging
+
+Set bit 31 (0x80000000) in the driver flags to make the driver write verbose debug messages using the standard log output (spdlog/syslog) of the host application.
+
+The driver can also mirror all its debug output as text datagrams over UDP (VSCP-UDP debugging). This makes it possible to follow driver internals live from another machine. Enabling UDP debugging implicitly enables debug logging.
+
+Enable UDP debugging either by adding the target as the third parameter of the configuration string, for example
+
+```
+/dev/ttyUSB0;0;192.168.1.20:9999
+```
+
+or by setting bit 30 (0x40000000) in the driver flags to send to the default target 127.0.0.1:9999.
+
+Listen to the debug stream with any UDP tool, for example
+
+```
+nc -klu 9999
+```
+
+Each datagram is a single log line on the form `level: message`.
 
 ## Status return
 

@@ -55,8 +55,13 @@ jobs:
       - name: Test Homebrew install from formula
         run: brew install --formula "$HOMEBREW_TAP_NAME/vscpl1drv-can4vscp"
 
+      - name: Set artifact name
+        run: echo "ARTIFACT_NAME=$(sed -n 's/^set(CPACK_PACKAGE_FILE_NAME \"\(.*\)\")$/\1/p' build/CPackConfig.cmake)" >> "$GITHUB_ENV"
+
       - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
-          name: macos-packages
-          path: dist/*
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            dist/*
+            !dist/_CPack_Packages
