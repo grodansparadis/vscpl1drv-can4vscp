@@ -139,47 +139,7 @@ Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu
  | Bit 30 | Enable UDP debugging (0x40000000). Debug output is sent as UDP datagrams to 127.0.0.1:9999 or to the target given as *udphost[:udpport]* in the configuration string. See [Debugging](#debugging). |
  | Bit 31 | Enable debug messages to LOG_DEBUG, syslog (0x80000000).  |
 
-## Debugging
 
-The driver has two debug facilities that can be used to investigate problems.
-
-### Debug logging (flag bit 31)
-
-Set bit 31 (**0x80000000**) in the driver flags to make the driver write verbose debug messages using the standard log output (spdlog/syslog) of the host application.
-
-```xml
-flags="0x80000000"
-```
-
-### UDP debugging (flag bit 30 or configuration string)
-
-The driver can mirror all its debug output as text datagrams over UDP (VSCP-UDP debugging). This makes it possible to follow driver internals live from another machine without touching the log configuration of the host application. Enabling UDP debugging implicitly enables debug logging.
-
-Enable it in one of two ways:
-
-1. Add the target as the third parameter of the configuration string. The port defaults to **9999**.
-
-```xml
-config="/dev/ttyUSB0;0;192.168.1.20:9999"
-```
-
-2. Set bit 30 (**0x40000000**) in the driver flags to send to the default target 127.0.0.1:9999.
-
-```xml
-flags="0x40000000"
-```
-
-Listen to the debug stream with any UDP tool, for example
-
-```bash
-nc -klu 9999
-```
-
-Each datagram is a single log line on the form `level: message`, e.g.
-
-```
-debug: [vscpl1drv-can4vscp] Open of port [/dev/ttyUSB0] successful
-```
 
 ## Status return
 
@@ -348,7 +308,49 @@ The repository CI includes a Homebrew install step on macOS from the generated C
 
 ## Troubleshooting
 
-### Enable debug output
+#### Debugging
+
+The driver has two debug facilities that can be used to investigate problems.
+
+#### Debug logging (flag bit 31)
+
+Set bit 31 (**0x80000000**) in the driver flags to make the driver write verbose debug messages using the standard log output (spdlog/syslog) of the host application. This is useful on Linux systems.
+
+```xml
+flags="0x80000000"
+```
+
+#### UDP debugging (flag bit 30 or configuration string)
+
+The driver can mirror all its debug output as text datagrams over UDP (VSCP-UDP debugging). This makes it possible to follow driver internals live from another machine without touching the log configuration of the host application. Enabling UDP debugging implicitly enables debug logging.
+
+Enable it in one of two ways:
+
+1. Add the target as the third parameter of the configuration string. The port defaults to **9999**.
+
+```xml
+config="/dev/ttyUSB0;0;192.168.1.20:9999"
+```
+
+2. Set bit 30 (**0x40000000**) in the driver flags to send to the default target 127.0.0.1:9999.
+
+```xml
+flags="0x40000000"
+```
+
+Listen to the debug stream with any UDP tool, for example
+
+```bash
+nc -klu 9999
+```
+
+Each datagram is a single log line on the form `level: message`, e.g.
+
+```
+debug: [vscpl1drv-can4vscp] Open of port [/dev/ttyUSB0] successful
+```
+
+#### Enable debug output
 
 Set bit 32 of flags (0x8000000) to enable debug output to syslog. This will give diagnostic info that will help to solve many problems. On Linux check the log with
 

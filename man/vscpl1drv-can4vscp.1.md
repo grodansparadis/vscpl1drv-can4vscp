@@ -1,5 +1,5 @@
 % VSCPL1DRV-CAN4VSCP(1) VSCP Level I can4vscp serial driver
-% Åke Hedman, Grodans Paradis AB
+% Copyright (C) 2000-2026 Ake Hedman and contributors, [the VSCP project](https://www.vscp.org)
 % January 10, 2020
 
 # NAME
