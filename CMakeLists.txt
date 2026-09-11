@@ -36,7 +36,7 @@ set(DRIVER_SOVERSION 1)
 set(VSCP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/vscp)
 set(VSCP_COMMON_DIR ${VSCP_DIR}/src/common)
 set(VSCP_VSCP_COMMON_DIR ${VSCP_DIR}/src/vscp/common)
-set(VSCP_SPDLOG_DIR ${VSCP_DIR}/third_party/spdlog)
+set(VSCP_SPDLOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/spdlog)
 set(DRIVER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(EXISTS ${VSCP_SPDLOG_DIR}/include)
