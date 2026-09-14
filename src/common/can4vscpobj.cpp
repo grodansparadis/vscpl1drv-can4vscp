@@ -366,12 +366,11 @@ CCan4VSCPObj::CCan4VSCPObj() {
   m_transmitAckNackEvent = NULL;
 
   // Create the device AND LIST access mutexes
-  m_can4vscpMutex = CreateMutex(NULL, true, CANAL_DLL_CAN4VSCPDRV_OBJ_MUTEX);
-  m_receiveMutex = CreateMutex(NULL, true, CANAL_DLL_CAN4VSCPDRV_RECEIVE_MUTEX);
-  m_transmitMutex =
-      CreateMutex(NULL, true, CANAL_DLL_CAN4VSCPDRV_TRANSMIT_MUTEX);
-  m_responseMutex =
-      CreateMutex(NULL, true, CANAL_DLL_CAN4VSCPDRV_RESPONSE_MUTEX);
+  // (unnamed = process local, not initially owned)
+  m_can4vscpMutex = CreateMutex(NULL, FALSE, NULL);
+  m_receiveMutex = CreateMutex(NULL, FALSE, NULL);
+  m_transmitMutex = CreateMutex(NULL, FALSE, NULL);
+  m_responseMutex = CreateMutex(NULL, FALSE, NULL);
 
   // Events
   m_receiveDataEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -902,12 +901,6 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
     close();
     return CANAL_ERROR_INIT_FAIL;
   }
-
-  // Release the mutex
-  UNLOCK_MUTEX(m_can4vscpMutex);
-  UNLOCK_MUTEX(m_receiveMutex);
-  UNLOCK_MUTEX(m_transmitMutex);
-  UNLOCK_MUTEX(m_responseMutex);
 
 #else // LINUX
 

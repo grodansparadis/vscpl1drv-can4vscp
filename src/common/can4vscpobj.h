@@ -52,6 +52,7 @@ typedef sem_t vscp_sem_t;
 #endif
 
 #include <stdio.h>
+#include <atomic>
 #include <canal.h>
 #include <vscp.h>
 #include <vscp-serial.h>
@@ -409,10 +410,10 @@ public:
 public:
 
     /// Run flag
-    bool m_bRun;
+    std::atomic<bool> m_bRun;
 
     // Open flag
-    bool m_bOpen;
+    std::atomic<bool> m_bOpen;
 
     // * * * Capabilities * * *
     vscp_serial_caps m_caps;
@@ -691,7 +692,7 @@ public:
         Activity timer
         Is zero if events received
     */
-    uint32_t m_activity;
+    std::atomic<uint32_t> m_activity;
 };
 
 #endif // !defined(IXXATVCI_H__6F5CD90E_ACF7_459A_9ACB_849A57595639__INCLUDED_)
