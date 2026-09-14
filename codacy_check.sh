@@ -32,7 +32,7 @@ get_pull_request_changed_files_json() {
     while :; do
         if ! response=$(curl --fail --silent --show-error \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: ******" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             "$api_url/repos/$repo/pulls/$pr_number/files?per_page=100&page=$page"); then
             echo "Unable to query pull request files for Codacy scope: $repo#$pr_number" >&2
             return 1
@@ -125,7 +125,14 @@ CHANGED_FILES_JSON=$(get_changed_files_json)
 NORMALIZED_CHANGED_FILES_JSON=$(jq \
     --arg repo_root "$REPO_ROOT/" \
     --arg repo_name "$REPO_NAME/" \
-    'if . == null then null else map(sub("^file://"; "") | ltrimstr("./") | ltrimstr($repo_root) | ltrimstr($repo_name)) end' \
+    'def normalize_path:
+        sub("^file://"; "")
+        | if startswith($repo_root) then ltrimstr($repo_root)
+          elif startswith("./") then ltrimstr("./")
+          elif startswith($repo_name) then ltrimstr($repo_name)
+          else .
+          end;
+      if . == null then null else map(normalize_path) end' \
     <<<"$CHANGED_FILES_JSON")
 RESULTS_FILTER='
   .runs[] as $r
@@ -133,9 +140,11 @@ RESULTS_FILTER='
   | (
       (.locations[0].physicalLocation.artifactLocation.uri // "")
       | sub("^file://"; "")
-      | ltrimstr("./")
-      | ltrimstr($repo_root)
-      | ltrimstr($repo_name)
+      | if startswith($repo_root) then ltrimstr($repo_root)
+        elif startswith("./") then ltrimstr("./")
+        elif startswith($repo_name) then ltrimstr($repo_name)
+        else .
+        end
     ) as $uri
   | select(
       ($uri | startswith("third-party/") | not)
