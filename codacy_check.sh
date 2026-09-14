@@ -109,7 +109,7 @@ get_changed_files_json() {
             fi
 
             if ! changed_files=$(git diff --name-status --find-renames --find-copies "$base_sha" "$head_sha" | git_changed_files_json_from_name_status); then
-                echo "Unable to determine changed files for Codacy scope using endpoints: $base_sha $head_sha" >&2
+                echo "Unable to determine changed files for Codacy scope from local git diff between: $base_sha and $head_sha" >&2
                 return 1
             fi
 
