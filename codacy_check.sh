@@ -60,7 +60,7 @@ get_changed_files_json() {
     local changed_files=""
 
     case "$event_name" in
-    pull_request)
+    pull_request | pull_request_target)
         if [ ! -f "$event_path" ]; then
             echo "Missing GitHub event payload for Codacy pull request scope" >&2
             return 1
@@ -139,7 +139,7 @@ RESULTS_FILTER='
     ) as $uri
   | select(
       ($uri | startswith("third-party/") | not)
-      and ($changed_files == null or ($changed_files | index($uri)))
+      and ($changed_files == null or (($changed_files | index($uri)) != null))
     )
   | {
       uri: $uri,
