@@ -40,6 +40,7 @@
 #include <math.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <strings.h>
 #include <sys/socket.h>
 #endif
 
@@ -47,8 +48,13 @@
 #include <string>
 #include <vector>
 
+///////////////////////////////////////////////////////////////////////////////
+// can4vscpDebugStamp
+//
 // Timestamped logging to the receive debug file (m_flog).
 // No-op unless DEBUG_CAN4VSCP_RECEIVE is defined.
+//
+
 #ifdef DEBUG_CAN4VSCP_RECEIVE
 static void can4vscpDebugStamp(FILE *pf)
 {
@@ -84,7 +90,12 @@ static void can4vscpDebugStamp(FILE *pf)
 
 namespace {
 
+///////////////////////////////////////////////////////////////////////////////
+// UdpDebugSink
+//
 // Sends driver debug output as UDP datagrams to a configurable target
+//
+
 class UdpDebugSink {
 public:
   bool open(const char *host, unsigned short port) {
@@ -202,6 +213,70 @@ private:
 
 UdpDebugSink gUdpDebugSink;
 
+///////////////////////////////////////////////////////////////////////////////
+// syslogPriority
+//
+
+#ifndef WIN32
+// Minimum level for the syslog channel. spdlog::level::off disables it.
+spdlog::level::level_enum gSyslogLevel = spdlog::level::info;
+
+int syslogPriority(spdlog::level::level_enum level) {
+  switch (level) {
+  case spdlog::level::trace:
+  case spdlog::level::debug:
+    return LOG_DEBUG;
+  case spdlog::level::warn:
+    return LOG_WARNING;
+  case spdlog::level::err:
+    return LOG_ERR;
+  case spdlog::level::critical:
+    return LOG_CRIT;
+  case spdlog::level::info:
+  default:
+    return LOG_INFO;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// parseLogLevel
+//
+// Parse a log level name, default "info" when absent or unknown
+//
+
+spdlog::level::level_enum parseLogLevel(const char *pLevel) {
+  if ((NULL == pLevel) || !*pLevel) {
+    return spdlog::level::info;
+  }
+  if (0 == strcasecmp(pLevel, "trace")) {
+    return spdlog::level::trace;
+  }
+  if (0 == strcasecmp(pLevel, "debug")) {
+    return spdlog::level::debug;
+  }
+  if ((0 == strcasecmp(pLevel, "warn")) ||
+      (0 == strcasecmp(pLevel, "warning"))) {
+    return spdlog::level::warn;
+  }
+  if ((0 == strcasecmp(pLevel, "err")) || (0 == strcasecmp(pLevel, "error"))) {
+    return spdlog::level::err;
+  }
+  if (0 == strcasecmp(pLevel, "critical")) {
+    return spdlog::level::critical;
+  }
+  if (0 == strcasecmp(pLevel, "off")) {
+    return spdlog::level::off;
+  }
+  return spdlog::level::info;
+}
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+// driverLog
+//
+// Called to log a message with a specified log level. Mirrors the message to syslog and UDP debug target if enabled.
+//
+
 void driverLog(spdlog::level::level_enum level, const char *format, ...) {
   va_list args;
   va_start(args, format);
@@ -227,6 +302,13 @@ void driverLog(spdlog::level::level_enum level, const char *format, ...) {
 
   spdlog::log(level, "{}", message);
 
+#ifndef WIN32
+  // Mirror the message to syslog if it passes the configured level
+  if ((spdlog::level::off != gSyslogLevel) && (level >= gSyslogLevel)) {
+    syslog(syslogPriority(level), "%s", message.c_str());
+  }
+#endif
+
   // Mirror the message to the UDP debug target if enabled
   if (gUdpDebugSink.isOpen()) {
     const spdlog::string_view_t lvl = spdlog::level::to_string_view(level);
@@ -236,6 +318,12 @@ void driverLog(spdlog::level::level_enum level, const char *format, ...) {
     gUdpDebugSink.send(datagram);
   }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// semaphoreTimedWait
+//
+// Called to wait on a semaphore with a timeout. Returns 0 on success, -1 on failure (including timeout).
+//
 
 #ifndef WIN32
 int semaphoreTimedWait(vscp_sem_t *psem, uint32_t timeoutMs) {
@@ -278,6 +366,12 @@ int semaphoreTimedWait(vscp_sem_t *psem, uint32_t timeoutMs) {
 #endif
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// semaphoreInit
+//
+// Called to initialize a semaphore. Returns 0 on success, -1 on failure.
+//
+
 int semaphoreInit(vscp_sem_t *psem, unsigned int initialValue) {
 #ifdef __APPLE__
   *psem = dispatch_semaphore_create(static_cast<long>(initialValue));
@@ -287,6 +381,12 @@ int semaphoreInit(vscp_sem_t *psem, unsigned int initialValue) {
 #endif
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// semaphorePost
+//
+// Called to post (signal) a semaphore. Returns 0 on success, -1 on failure.
+//
+
 int semaphorePost(vscp_sem_t *psem) {
 #ifdef __APPLE__
   dispatch_semaphore_signal(*psem);
@@ -295,6 +395,12 @@ int semaphorePost(vscp_sem_t *psem) {
   return sem_post(psem);
 #endif
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// semaphoreDestroy
+//
+// Called to destroy a semaphore. Returns 0 on success, -1 on failure.
+//
 
 int semaphoreDestroy(vscp_sem_t *psem) {
 #ifdef __APPLE__
@@ -498,7 +604,7 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 //-----------------------------------------------------------------------------
 // Parameters for the driver as a string on the following form
 //
-// "comport[;nBaud[;udphost[:udpport]]]"
+// "comport[;nBaud[;udphost[:udpport][;loglevel]]]"
 //
 //
 // comport
@@ -506,13 +612,19 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 //	WIN32: 1 for COM1, 2 for COM2 etc
 //	LINUX: /dev/ttyS1, /dev/ttyS2 etc
 //
-// Baudrate is always 115200. Not true anymore. Can be changed temprarily with
-// baudrate code.
+// baudrate
+// ========
+// Default is 115200. 
 //
 // udphost[:udpport]
 // =================
 //  Optional VSCP-UDP debug target. If given, all driver debug output is
 //  also sent as UDP datagrams to this host. Default port is 9999.
+//
+// loglevel (Linux only)
+// =====================
+//  Optional level for the driver syslog channel: "trace", "debug",
+//  "info", "warn", "error", "critical" or "off". Default is "info".
 //
 // flags
 //-----------------------------------------------------------------------------
@@ -572,7 +684,6 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   char szDrvParams[MAX_PATH];
   DWORD baud = 115200;
 #else
-
   char szDrvParams[PATH_MAX];
   char *pDeviceName;
   char szBaud[PATH_MAX];
@@ -685,6 +796,17 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
       }
     }
   }
+
+  // Optional syslog level (Linux only), default "info"
+  p = strtok(NULL, ";");
+#ifndef WIN32
+  gSyslogLevel = parseLogLevel(p);
+  if (m_bDebug) {
+    driverLog(spdlog::level::debug,
+              "[vscpl1drv-can4vscp] Syslog level set to '%s'",
+              spdlog::level::to_string_view(gSyslogLevel).data());
+  }
+#endif
 
   // Enable UDP debug if a target is configured or flag bit 30 is set
   if (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG) {

@@ -66,12 +66,12 @@ typedef sem_t vscp_sem_t;
 //#define DEBUG_CAN4VSCP_RECEIVE
 
 // Flags
-#define CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE          0x0004
-#define CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK                   0x0008
-#define CAN4VSCP_FLAG_ENABLE_TIMESTAMP                      0x0010
-#define CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE             0x0020
-#define CAN4VSCP_FLAG_ENABLE_REOPEN                         0x0040
-#define CAN4VSCP_FLAG_ENABLE_STRICT                         0x0080
+#define CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE          0x00000004
+#define CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK                   0x00000008
+#define CAN4VSCP_FLAG_ENABLE_TIMESTAMP                      0x00000010
+#define CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE             0x00000020
+#define CAN4VSCP_FLAG_ENABLE_REOPEN                         0x00000040
+#define CAN4VSCP_FLAG_ENABLE_STRICT                         0x00000080
 #define CAN4VSCP_FLAG_ENABLE_UDP_DEBUG                      0x40000000
 #define CAN4VSCP_FLAG_ENABLE_DEBUG                          0x80000000
 
