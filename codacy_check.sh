@@ -13,7 +13,6 @@ get_changed_files_json() {
     local head_sha=""
     local diff_range=""
     local changed_files=""
-    local merge_base=""
 
     case "$event_name" in
     pull_request)
@@ -46,13 +45,8 @@ get_changed_files_json() {
         fi
 
         if [ "$event_name" = "pull_request" ]; then
-            if ! merge_base=$(git merge-base "$base_sha" "$head_sha"); then
-                echo "Unable to determine merge base for Codacy pull request scope: $base_sha $head_sha" >&2
-                return 1
-            fi
-
-            if ! changed_files=$(git diff --name-only "$merge_base..$head_sha"); then
-                echo "Unable to determine changed files for Codacy pull request scope using range: $merge_base..$head_sha" >&2
+            if ! changed_files=$(git diff --name-only "$base_sha...$head_sha"); then
+                echo "Unable to determine changed files for Codacy pull request scope using range: $base_sha...$head_sha" >&2
                 return 1
             fi
         elif [ "$event_name" = "push" ] && [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
