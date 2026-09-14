@@ -51,6 +51,14 @@ get_pull_request_changed_files_json() {
     printf '%s\n' "$results"
 }
 
+git_changed_files_json_from_name_status() {
+    awk '
+        $1 ~ /^[RC]/ && NF >= 3 { print $2; print $3; next }
+        NF >= 2 { print $2; next }
+        NF >= 1 { print $1 }
+    ' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique'
+}
+
 get_changed_files_json() {
     local event_path="${GITHUB_EVENT_PATH:-}"
     local event_name="${GITHUB_EVENT_NAME:-}"
@@ -100,10 +108,13 @@ get_changed_files_json() {
                 return 1
             fi
 
-            if ! changed_files=$(git diff --name-only "$base_sha" "$head_sha"); then
+            if ! changed_files=$(git diff --name-status --find-renames --find-copies "$base_sha" "$head_sha" | git_changed_files_json_from_name_status); then
                 echo "Unable to determine changed files for Codacy scope using endpoints: $base_sha $head_sha" >&2
                 return 1
             fi
+
+            printf '%s\n' "$changed_files"
+            return
         fi
 
         jq -Rsc 'split("\n") | map(select(length > 0))' <<<"$changed_files"
