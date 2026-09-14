@@ -12,7 +12,7 @@ get_changed_files_json() {
     local base_sha=""
     local head_sha=""
 
-    local diff_range=""
+    local changed_files=""
 
     if [ -f "$event_path" ]; then
         case "$event_name" in
@@ -30,7 +30,12 @@ get_changed_files_json() {
     fi
 
     if [ -n "$base_sha" ] && [ -n "$head_sha" ] && [ -n "$diff_range" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ]; then
-        git diff --name-only "$diff_range" | jq -Rsc 'split("\n") | map(select(length > 0))'
+        if ! changed_files=$(git diff --name-only "$diff_range"); then
+            echo "Unable to determine changed files for Codacy scope using range: $diff_range" >&2
+            return 1
+        fi
+
+        jq -Rsc 'split("\n") | map(select(length > 0))' <<<"$changed_files"
         return
     fi
 
