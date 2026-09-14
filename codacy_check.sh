@@ -108,7 +108,7 @@ get_changed_files_json() {
         return
     fi
 
-    printf '[]\n'
+    printf 'null\n'
 }
 
 ./.codacy/cli.sh install
@@ -126,7 +126,7 @@ RESULTS_FILTER='
   | ((.locations[0].physicalLocation.artifactLocation.uri // "") | ltrimstr("./")) as $uri
   | select(
       ($uri | startswith("third-party/") | not)
-      and (($changed_files | length) == 0 or ($changed_files | index($uri)))
+      and ($changed_files == null or ($changed_files | index($uri)))
     )
   | {
       uri: $uri,
@@ -136,7 +136,7 @@ RESULTS_FILTER='
     }
 '
 
-if [ "$CHANGED_FILES_JSON" = "[]" ]; then
+if [ "$CHANGED_FILES_JSON" = "null" ]; then
     SCOPE="entire repository"
 else
     SCOPE="$(jq 'length' <<<"$CHANGED_FILES_JSON") changed file(s)"
