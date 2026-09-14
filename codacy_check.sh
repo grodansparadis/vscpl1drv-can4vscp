@@ -177,6 +177,11 @@ else
     SCOPE="$(jq 'length' <<<"$NORMALIZED_CHANGED_FILES_JSON") changed file(s)"
 fi
 
+if [ "$NORMALIZED_CHANGED_FILES_JSON" = "[]" ]; then
+    echo "Codacy found 0 issue(s) in $SCOPE (third-party/ excluded). Full report: $OUT"
+    exit 0
+fi
+
 ISSUES=$(jq --arg repo_root "$REPO_ROOT/" --arg repo_name "$REPO_NAME/" --argjson changed_files "$NORMALIZED_CHANGED_FILES_JSON" "[$RESULTS_FILTER] | length" "$OUT")
 echo "Codacy found $ISSUES issue(s) in $SCOPE (third-party/ excluded). Full report: $OUT"
 
