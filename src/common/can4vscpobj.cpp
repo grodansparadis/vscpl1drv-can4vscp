@@ -687,10 +687,15 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   }
 
   // Enable UDP debug if a target is configured or flag bit 30 is set
-  if (udpHost[0] || (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG)) {
+  if (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG) {
+
+    // If no host is set, set default host and port
     if (!udpHost[0]) {
       strcpy(udpHost, "127.0.0.1");
+      udpPort=9999;    
     }
+
+    // Open the UDP debug sink
     if (gUdpDebugSink.open(udpHost, udpPort)) {
       m_bUdpDebug = true;
       m_bDebug = true; // UDP debug implies debug logging
