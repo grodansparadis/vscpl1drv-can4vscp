@@ -59,6 +59,14 @@ git_changed_files_json_from_name_status() {
     ' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique'
 }
 
+filter_existing_changed_files_json() {
+    jq -r '.[]' | while IFS= read -r path; do
+        if [ -e "$path" ]; then
+            printf '%s\n' "$path"
+        fi
+    done | jq -Rsc 'split("\n") | map(select(length > 0)) | unique'
+}
+
 get_changed_files_json() {
     local event_path="${GITHUB_EVENT_PATH:-}"
     local event_name="${GITHUB_EVENT_NAME:-}"
@@ -147,6 +155,11 @@ NORMALIZED_CHANGED_FILES_JSON=$(jq \
           end;
       if . == null then null else map(normalize_path) end' \
     <<<"$CHANGED_FILES_JSON")
+if [ "$NORMALIZED_CHANGED_FILES_JSON" = "null" ]; then
+    ANALYZABLE_CHANGED_FILES_JSON="null"
+else
+    ANALYZABLE_CHANGED_FILES_JSON=$(printf '%s\n' "$NORMALIZED_CHANGED_FILES_JSON" | filter_existing_changed_files_json)
+fi
 RESULTS_FILTER='
   .runs[] as $r
   | $r.results[]?
@@ -171,21 +184,21 @@ RESULTS_FILTER='
     }
 '
 
-if [ "$NORMALIZED_CHANGED_FILES_JSON" = "null" ]; then
+if [ "$ANALYZABLE_CHANGED_FILES_JSON" = "null" ]; then
     SCOPE="entire repository"
 else
-    SCOPE="$(jq 'length' <<<"$NORMALIZED_CHANGED_FILES_JSON") changed file(s)"
+    SCOPE="$(jq 'length' <<<"$ANALYZABLE_CHANGED_FILES_JSON") changed file(s)"
 fi
 
-if [ "$NORMALIZED_CHANGED_FILES_JSON" = "[]" ]; then
+if [ "$ANALYZABLE_CHANGED_FILES_JSON" = "[]" ]; then
     echo "Codacy found 0 issue(s) in $SCOPE (third-party/ excluded). Full report: $OUT"
     exit 0
 fi
 
-ISSUES=$(jq --arg repo_root "$REPO_ROOT/" --arg repo_name "$REPO_NAME/" --argjson changed_files "$NORMALIZED_CHANGED_FILES_JSON" "[$RESULTS_FILTER] | length" "$OUT")
+ISSUES=$(jq --arg repo_root "$REPO_ROOT/" --arg repo_name "$REPO_NAME/" --argjson changed_files "$ANALYZABLE_CHANGED_FILES_JSON" "[$RESULTS_FILTER] | length" "$OUT")
 echo "Codacy found $ISSUES issue(s) in $SCOPE (third-party/ excluded). Full report: $OUT"
 
 if [ "$ISSUES" -gt 0 ]; then
-    jq -r --arg repo_root "$REPO_ROOT/" --arg repo_name "$REPO_NAME/" --argjson changed_files "$NORMALIZED_CHANGED_FILES_JSON" "$RESULTS_FILTER | \"\(.uri):\(.line) [\(.tool)] \(.message)\"" "$OUT"
+    jq -r --arg repo_root "$REPO_ROOT/" --arg repo_name "$REPO_NAME/" --argjson changed_files "$ANALYZABLE_CHANGED_FILES_JSON" "$RESULTS_FILTER | \"\(.uri):\(.line) [\(.tool)] \(.message)\"" "$OUT"
     exit 1
 fi
