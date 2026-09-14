@@ -18,6 +18,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Run Codacy check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./codacy_check.sh
 
       - name: Upload SARIF report

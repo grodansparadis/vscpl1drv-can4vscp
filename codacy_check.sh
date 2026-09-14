@@ -6,6 +6,49 @@ cd "$(dirname "$0")"
 
 OUT="codacy-results.sarif"
 
+get_pull_request_changed_files_json() {
+    local event_path="$1"
+    local api_url="${GITHUB_API_URL:-https://api.github.com}"
+    local page=1
+    local page_files=""
+    local pr_number=""
+    local repo="${GITHUB_REPOSITORY:-}"
+    local response=""
+    local results='[]'
+
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+        echo "Missing GITHUB_TOKEN for Codacy pull request scope" >&2
+        return 1
+    fi
+
+    pr_number=$(jq -r '.number // .pull_request.number // empty' "$event_path")
+    if [ -z "$pr_number" ] || [ -z "$repo" ]; then
+        echo "Unable to determine pull request metadata for Codacy scope" >&2
+        return 1
+    fi
+
+    while :; do
+        if ! response=$(curl --fail --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: ******" \
+            "$api_url/repos/$repo/pulls/$pr_number/files?per_page=100&page=$page"); then
+            echo "Unable to query pull request files for Codacy scope: $repo#$pr_number" >&2
+            return 1
+        fi
+
+        page_files=$(jq '[.[].filename]' <<<"$response")
+        results=$(jq -cs '.[0] + .[1]' <(printf '%s\n' "$results") <(printf '%s\n' "$page_files"))
+
+        if [ "$(jq 'length' <<<"$page_files")" -lt 100 ]; then
+            break
+        fi
+
+        page=$((page + 1))
+    done
+
+    printf '%s\n' "$results"
+}
+
 get_changed_files_json() {
     local event_path="${GITHUB_EVENT_PATH:-}"
     local event_name="${GITHUB_EVENT_NAME:-}"
@@ -21,8 +64,8 @@ get_changed_files_json() {
             return 1
         fi
 
-        base_sha=$(jq -r '.pull_request.base.sha // empty' "$event_path")
-        head_sha=$(jq -r '.pull_request.head.sha // empty' "$event_path")
+        get_pull_request_changed_files_json "$event_path"
+        return
         ;;
     push)
         if [ ! -f "$event_path" ]; then
@@ -38,25 +81,13 @@ get_changed_files_json() {
         ;;
     esac
 
-    if [ "$event_name" = "pull_request" ] || [ "$event_name" = "push" ]; then
+    if [ "$event_name" = "push" ]; then
         if [ -z "$base_sha" ] || [ -z "$head_sha" ]; then
             echo "Unable to determine changed files for Codacy scope from GitHub event metadata" >&2
             return 1
         fi
 
-        if [ "$event_name" = "pull_request" ]; then
-            if ! git cat-file -e "${head_sha}^{commit}" 2>/dev/null; then
-                if ! git fetch --no-tags --depth=1 origin "$head_sha"; then
-                    echo "Unable to fetch Codacy pull request head commit: $head_sha" >&2
-                    return 1
-                fi
-            fi
-
-            if ! changed_files=$(git diff --name-only "$base_sha...$head_sha"); then
-                echo "Unable to determine changed files for Codacy pull request scope using range: $base_sha...$head_sha" >&2
-                return 1
-            fi
-        elif [ "$event_name" = "push" ] && [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
+        if [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
             if ! changed_files=$(git ls-tree -r --name-only "$head_sha"); then
                 echo "Unable to determine changed files for Codacy scope from pushed tree: $head_sha" >&2
                 return 1
