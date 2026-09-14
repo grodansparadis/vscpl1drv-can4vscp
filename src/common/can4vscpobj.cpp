@@ -214,6 +214,28 @@ private:
 UdpDebugSink gUdpDebugSink;
 
 ///////////////////////////////////////////////////////////////////////////////
+// nextConfigToken
+//
+// Next ';'-separated token, preserving empty fields (unlike strtok)
+//
+
+char *nextConfigToken(char **ppCursor) {
+  if ((NULL == ppCursor) || (NULL == *ppCursor)) {
+    return NULL;
+  }
+  char *pToken = *ppCursor;
+  char *pSep = strchr(pToken, ';');
+  if (NULL != pSep) {
+    *pSep = 0;
+    *ppCursor = pSep + 1;
+  }
+  else {
+    *ppCursor = NULL;
+  }
+  return pToken;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // syslogPriority
 //
 
@@ -606,6 +628,8 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 //
 // "comport[;nBaud[;udphost[:udpport][;loglevel]]]"
 //
+// Fields may be left empty to keep their defaults, e.g.
+// "/dev/ttyUSB0;;;debug"
 //
 // comport
 // =======
@@ -685,7 +709,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   DWORD baud = 115200;
 #else
   char szDrvParams[PATH_MAX];
-  char *pDeviceName;
+  char *pDeviceName = (char *)"/dev/ttyUSB0";
   char szBaud[PATH_MAX];
 
   strcpy(szBaud, "115200");
@@ -761,8 +785,9 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
 #ifdef WIN32
   nComPort = 1; // Default com port
 #endif
-  p = strtok(szDrvParams, ";");
-  if (NULL != p) {
+  char *pCursor = szDrvParams;
+  p = nextConfigToken(&pCursor);
+  if ((NULL != p) && *p) {
 #ifdef WIN32
     if (NULL != (p = strstr(p, "COM"))) {
       nComPort = atoi(p + 3);
@@ -772,8 +797,8 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
 #endif
   }
 
-  p = strtok(NULL, ";");
-  if (NULL != p) {
+  p = nextConfigToken(&pCursor);
+  if ((NULL != p) && *p) {
     m_nBaud = atoi(p);
     // Check if a valid code
     if (m_nBaud > (SET_BAUDRATE_MAX - 1)) {
@@ -784,7 +809,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   // Optional UDP debug target "udphost[:udpport]"
   char udpHost[256] = {0};
   unsigned short udpPort = CAN4VSCP_UDP_DEBUG_DEFAULT_PORT;
-  p = strtok(NULL, ";");
+  p = nextConfigToken(&pCursor);
   if ((NULL != p) && *p) {
     strncpy(udpHost, p, sizeof(udpHost) - 1);
     char *pColon = strrchr(udpHost, ':');
@@ -798,7 +823,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   }
 
   // Optional syslog level (Linux only), default "info"
-  p = strtok(NULL, ";");
+  p = nextConfigToken(&pCursor);
 #ifndef WIN32
   gSyslogLevel = parseLogLevel(p);
   if (m_bDebug) {
