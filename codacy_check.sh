@@ -5,6 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 OUT="codacy-results.sarif"
+REPO_ROOT="$PWD"
+REPO_NAME="$(basename "$REPO_ROOT")"
 
 get_pull_request_changed_files_json() {
     local event_path="$1"
@@ -120,10 +122,21 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 CHANGED_FILES_JSON=$(get_changed_files_json)
+NORMALIZED_CHANGED_FILES_JSON=$(jq \
+    --arg repo_root "$REPO_ROOT/" \
+    --arg repo_name "$REPO_NAME/" \
+    'if . == null then null else map(sub("^file://"; "") | ltrimstr("./") | ltrimstr($repo_root) | ltrimstr($repo_name)) end' \
+    <<<"$CHANGED_FILES_JSON")
 RESULTS_FILTER='
   .runs[] as $r
   | $r.results[]?
-  | ((.locations[0].physicalLocation.artifactLocation.uri // "") | ltrimstr("./")) as $uri
+  | (
+      (.locations[0].physicalLocation.artifactLocation.uri // "")
+      | sub("^file://"; "")
+      | ltrimstr("./")
+      | ltrimstr($repo_root)
+      | ltrimstr($repo_name)
+    ) as $uri
   | select(
       ($uri | startswith("third-party/") | not)
       and ($changed_files == null or ($changed_files | index($uri)))
@@ -136,16 +149,16 @@ RESULTS_FILTER='
     }
 '
 
-if [ "$CHANGED_FILES_JSON" = "null" ]; then
+if [ "$NORMALIZED_CHANGED_FILES_JSON" = "null" ]; then
     SCOPE="entire repository"
 else
-    SCOPE="$(jq 'length' <<<"$CHANGED_FILES_JSON") changed file(s)"
+    SCOPE="$(jq 'length' <<<"$NORMALIZED_CHANGED_FILES_JSON") changed file(s)"
 fi
 
-ISSUES=$(jq --argjson changed_files "$CHANGED_FILES_JSON" "[$RESULTS_FILTER] | length" "$OUT")
+ISSUES=$(jq --arg repo_root "$REPO_ROOT/" --arg repo_name "$REPO_NAME/" --argjson changed_files "$NORMALIZED_CHANGED_FILES_JSON" "[$RESULTS_FILTER] | length" "$OUT")
 echo "Codacy found $ISSUES issue(s) in $SCOPE (third-party/ excluded). Full report: $OUT"
 
 if [ "$ISSUES" -gt 0 ]; then
-    jq -r --argjson changed_files "$CHANGED_FILES_JSON" "$RESULTS_FILTER | \"\(.uri):\(.line) [\(.tool)] \(.message)\"" "$OUT"
+    jq -r --arg repo_root "$REPO_ROOT/" --arg repo_name "$REPO_NAME/" --argjson changed_files "$NORMALIZED_CHANGED_FILES_JSON" "$RESULTS_FILTER | \"\(.uri):\(.line) [\(.tool)] \(.message)\"" "$OUT"
     exit 1
 fi
