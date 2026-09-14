@@ -12,21 +12,25 @@ get_changed_files_json() {
     local base_sha=""
     local head_sha=""
 
+    local diff_range=""
+
     if [ -f "$event_path" ]; then
         case "$event_name" in
         pull_request)
             base_sha=$(jq -r '.pull_request.base.sha // empty' "$event_path")
             head_sha=$(jq -r '.pull_request.head.sha // empty' "$event_path")
+            diff_range="$base_sha...$head_sha"
             ;;
         push)
             base_sha=$(jq -r '.before // empty' "$event_path")
             head_sha=$(jq -r '.after // empty' "$event_path")
+            diff_range="$base_sha..$head_sha"
             ;;
         esac
     fi
 
-    if [ -n "$base_sha" ] && [ -n "$head_sha" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ]; then
-        git diff --name-only "$base_sha...$head_sha" | jq -Rsc 'split("\n") | map(select(length > 0))'
+    if [ -n "$base_sha" ] && [ -n "$head_sha" ] && [ -n "$diff_range" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ]; then
+        git diff --name-only "$diff_range" | jq -Rsc 'split("\n") | map(select(length > 0))'
         return
     fi
 
