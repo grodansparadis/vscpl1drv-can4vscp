@@ -56,8 +56,8 @@ get_changed_files_json() {
                 return 1
             fi
         elif [ "$event_name" = "push" ] && [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
-            if ! changed_files=$(git diff-tree --root --no-commit-id --name-only -r "$head_sha"); then
-                echo "Unable to determine changed files for Codacy scope from pushed commit: $head_sha" >&2
+            if ! changed_files=$(git ls-tree -r --name-only "$head_sha"); then
+                echo "Unable to determine changed files for Codacy scope from pushed tree: $head_sha" >&2
                 return 1
             fi
         else
