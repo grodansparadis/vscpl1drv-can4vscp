@@ -47,6 +47,41 @@
 #include <string>
 #include <vector>
 
+// Timestamped logging to the receive debug file (m_flog).
+// No-op unless DEBUG_CAN4VSCP_RECEIVE is defined.
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+static void can4vscpDebugStamp(FILE *pf)
+{
+#ifdef WIN32
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  fprintf(pf, "%04u-%02u-%02u %02u:%02u:%02u.%03u ", st.wYear, st.wMonth,
+          st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+#else
+  timeval tv;
+  gettimeofday(&tv, NULL);
+  struct tm tmnow;
+  localtime_r(&tv.tv_sec, &tmnow);
+  char tbuf[32];
+  strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &tmnow);
+  fprintf(pf, "%s.%03ld ", tbuf, (long)(tv.tv_usec / 1000));
+#endif
+}
+
+#define DEBUG_RCV_PRINT(...)                                                   \
+  do {                                                                         \
+    if (NULL != m_flog) {                                                      \
+      can4vscpDebugStamp(m_flog);                                              \
+      fprintf(m_flog, __VA_ARGS__);                                            \
+      fflush(m_flog);                                                          \
+    }                                                                          \
+  } while (0)
+#else
+#define DEBUG_RCV_PRINT(...)                                                   \
+  do {                                                                         \
+  } while (0)
+#endif
+
 namespace {
 
 // Sends driver debug output as UDP datagrams to a configurable target
@@ -1977,18 +2012,12 @@ bool CCan4VSCPObj::addToResponseQueue(void) {
 bool CCan4VSCPObj::serialData2StateMachine(void) {
   uint8_t c; // Serial character
   int cnt = 0;
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-  char dbgbuf[20];
-#endif
 
   // Read RS-232 data
   c = m_com.readChar(&cnt);
-#ifdef DEBUG_CAN4VSCP_RECEIVE
   if (cnt > 0) {
-    sprintf(dbgbuf, "cnt=%02X \n", c);
-    fwrite(dbgbuf, 1, strlen(dbgbuf), m_flog);
+    DEBUG_RCV_PRINT("cnt=%02X \n", c);
   }
-#endif
 
   while (cnt > 0) { // Linux sets cnt ==-1 if no data
 
@@ -1998,21 +2027,15 @@ bool CCan4VSCPObj::serialData2StateMachine(void) {
     case INCOMING_STATE_NONE:
 
       if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c)) {
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_NONE/SUBSATE_DLE \n");
-#endif
+        DEBUG_RCV_PRINT(" STATE_NONE/SUBSATE_DLE \n");
         m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
       } else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c)) {
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_STX/SUBSATE_NONE ");
-#endif
+        DEBUG_RCV_PRINT(" STATE_STX/SUBSATE_NONE ");
         m_RxMsgState = INCOMING_STATE_STX;
         m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
         m_lengthMsgRcv = 0;
       } else {
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_NONE/SUBSATE_NONE \n");
-#endif
+        DEBUG_RCV_PRINT(" STATE_NONE/SUBSATE_NONE \n");
         m_lengthMsgRcv = 0;
         m_RxMsgState = INCOMING_STATE_NONE;
         m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
@@ -2023,55 +2046,41 @@ bool CCan4VSCPObj::serialData2StateMachine(void) {
     case INCOMING_STATE_STX:
 
       if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c)) {
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_STX/SUBSTATE_DLE \n");
-#endif
+        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_DLE \n");
         m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
       } else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c)) {
         // This is strange as a DEL STX is not expected here
         // We try to sync up again...
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_STX/SUBSTATE_NONE \n");
-#endif
+        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE \n");
         m_RxMsgState = INCOMING_STATE_STX;
         m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
         m_lengthMsgRcv = 0;
       } else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (ETX == c)) {
 
         // We have a packet
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_NONE/SUBSTATE_NONE\n");
-#endif
+        DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n");
         m_RxMsgState = INCOMING_STATE_NONE;
         m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " ***FRAME*** \n");
-#endif
+        DEBUG_RCV_PRINT(" ***FRAME*** \n");
         return true;
 
       } else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (DLE == c)) {
         // Byte stuffed DLE  i.e. DLE DLE == DLE
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_STX/SUBSTATE_NONE\n");
-#endif
+        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE\n");
         m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
         if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv)) {
           m_bufferMsgRcv[m_lengthMsgRcv++] = c;
         } else {
           // This packet has wrong format as it have
           // to many databytes - start all over!
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-          fprintf(m_flog, " STATE_NONE/SUBSTATE_NONE\n");
-#endif
+          DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n");
           m_lengthMsgRcv = 0;
           m_RxMsgState = INCOMING_STATE_NONE;
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
         }
       } // We come here if data is received
       else {
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " STATE_STX/SUBSTATE_NONE\n ");
-#endif
+        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE\n ");
         m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
         if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv)) {
           m_bufferMsgRcv[m_lengthMsgRcv++] = c;
@@ -2079,9 +2088,7 @@ bool CCan4VSCPObj::serialData2StateMachine(void) {
           // This packet has wrong format as it have
           // to many databytes - start over!
           m_lengthMsgRcv = 0;
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-          fprintf(m_flog, " STATE_NONE/SUBSTATE_NONE\n ");
-#endif
+          DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n ");
           m_RxMsgState = INCOMING_STATE_NONE;
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
         }
@@ -2094,12 +2101,9 @@ bool CCan4VSCPObj::serialData2StateMachine(void) {
 
     // Read RS-232 data
     c = m_com.readChar(&cnt);
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-    if (cnt) {
-      sprintf(dbgbuf, "Rcv=%02X\n", c);
-      fwrite(dbgbuf, 1, strlen(dbgbuf), m_flog);
+    if (cnt > 0) {
+      DEBUG_RCV_PRINT("Rcv=%02X\n", c);
     }
-#endif
 
   } // while
 
@@ -2119,9 +2123,9 @@ void CCan4VSCPObj::readSerialData(void) {
     if (serialData2StateMachine()) {
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      fprintf(m_flog, " OPERATION\n");
-      fprintf(m_flog, " Operation=%d payload=%d\n", m_bufferMsgRcv[0],
-              m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
+      DEBUG_RCV_PRINT(" OPERATION\n");
+      DEBUG_RCV_PRINT(" Operation=%d payload=%d\n", m_bufferMsgRcv[0],
+                      m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
       for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]); g++) {
         fprintf(m_flog, " %02X", m_bufferMsgRcv[5 + g]);
       }
@@ -2131,9 +2135,9 @@ void CCan4VSCPObj::readSerialData(void) {
       // Check CRC
       if (!checkCRC()) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-        fprintf(m_flog, " CRC Failed!\n");
-        fprintf(m_flog, " Operation=%d payload=%d\n", m_bufferMsgRcv[0],
-                m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
+        DEBUG_RCV_PRINT(" CRC Failed!\n");
+        DEBUG_RCV_PRINT(" Operation=%d payload=%d\n", m_bufferMsgRcv[0],
+                        m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
         for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
              g++) {
           fprintf(m_flog, " %02X", m_bufferMsgRcv[5 + g]);
