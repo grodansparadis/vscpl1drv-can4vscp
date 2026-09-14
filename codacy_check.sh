@@ -33,19 +33,33 @@ get_changed_files_json() {
 
         base_sha=$(jq -r '.before // empty' "$event_path")
         head_sha=$(jq -r '.after // empty' "$event_path")
-        diff_range="$base_sha..$head_sha"
+        if [ "$base_sha" != "0000000000000000000000000000000000000000" ]; then
+            diff_range="$base_sha..$head_sha"
+        fi
         ;;
     esac
 
     if [ "$event_name" = "pull_request" ] || [ "$event_name" = "push" ]; then
-        if [ -z "$base_sha" ] || [ -z "$head_sha" ] || [ -z "$diff_range" ] || [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
+        if [ -z "$base_sha" ] || [ -z "$head_sha" ]; then
             echo "Unable to determine changed files for Codacy scope from GitHub event metadata" >&2
             return 1
         fi
 
-        if ! changed_files=$(git diff --name-only "$diff_range"); then
-            echo "Unable to determine changed files for Codacy scope using range: $diff_range" >&2
-            return 1
+        if [ "$event_name" = "push" ] && [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
+            if ! changed_files=$(git diff-tree --root --no-commit-id --name-only -r "$head_sha"); then
+                echo "Unable to determine changed files for Codacy scope from pushed commit: $head_sha" >&2
+                return 1
+            fi
+        else
+            if [ -z "$diff_range" ]; then
+                echo "Unable to determine changed files for Codacy scope from GitHub event metadata" >&2
+                return 1
+            fi
+
+            if ! changed_files=$(git diff --name-only "$diff_range"); then
+                echo "Unable to determine changed files for Codacy scope using range: $diff_range" >&2
+                return 1
+            fi
         fi
 
         jq -Rsc 'split("\n") | map(select(length > 0))' <<<"$changed_files"
