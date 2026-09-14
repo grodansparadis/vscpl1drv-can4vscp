@@ -30,7 +30,7 @@ get_pull_request_changed_files_json() {
     while :; do
         if ! response=$(curl --fail --silent --show-error \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: ******" \
+            -u "x-access-token:${GITHUB_TOKEN}" \
             "$api_url/repos/$repo/pulls/$pr_number/files?per_page=100&page=$page"); then
             echo "Unable to query pull request files for Codacy scope: $repo#$pr_number" >&2
             return 1
