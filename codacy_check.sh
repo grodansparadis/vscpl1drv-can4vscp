@@ -66,6 +66,7 @@ get_changed_files_json() {
     local head_sha=""
     local diff_range=""
     local changed_files=""
+    local changed_files_raw=""
 
     case "$event_name" in
     pull_request | pull_request_target)
@@ -108,11 +109,12 @@ get_changed_files_json() {
                 return 1
             fi
 
-            if ! changed_files=$(git diff --name-status --find-renames --find-copies "$base_sha" "$head_sha" | git_changed_files_json_from_name_status); then
+            if ! changed_files_raw=$(git diff --name-status --find-renames --find-copies "$base_sha" "$head_sha"); then
                 echo "Unable to determine changed files for Codacy scope from local git diff between: $base_sha and $head_sha" >&2
                 return 1
             fi
 
+            changed_files=$(printf '%s\n' "$changed_files_raw" | git_changed_files_json_from_name_status)
             printf '%s\n' "$changed_files"
             return
         fi
