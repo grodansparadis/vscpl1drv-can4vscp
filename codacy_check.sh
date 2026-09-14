@@ -6,6 +6,33 @@ cd "$(dirname "$0")"
 
 OUT="codacy-results.sarif"
 
+get_changed_files_json() {
+    local event_path="${GITHUB_EVENT_PATH:-}"
+    local event_name="${GITHUB_EVENT_NAME:-}"
+    local base_sha=""
+    local head_sha=""
+
+    if [ -f "$event_path" ]; then
+        case "$event_name" in
+        pull_request)
+            base_sha=$(jq -r '.pull_request.base.sha // empty' "$event_path")
+            head_sha=$(jq -r '.pull_request.head.sha // empty' "$event_path")
+            ;;
+        push)
+            base_sha=$(jq -r '.before // empty' "$event_path")
+            head_sha=$(jq -r '.after // empty' "$event_path")
+            ;;
+        esac
+    fi
+
+    if [ -n "$base_sha" ] && [ -n "$head_sha" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ]; then
+        git diff --name-only "$base_sha...$head_sha" | jq -Rsc 'split("\n") | map(select(length > 0))'
+        return
+    fi
+
+    printf '[]\n'
+}
+
 ./.codacy/cli.sh install
 ./.codacy/cli.sh analyze --format sarif --output "$OUT"
 
@@ -14,10 +41,33 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 2
 fi
 
-ISSUES=$(jq '[.runs[].results[]? | select((.locations[0].physicalLocation.artifactLocation.uri // "") | startswith("third-party/") | not)] | length' "$OUT")
-echo "Codacy found $ISSUES issue(s) (third-party/ excluded). Full report: $OUT"
+CHANGED_FILES_JSON=$(get_changed_files_json)
+RESULTS_FILTER='
+  .runs[] as $r
+  | $r.results[]?
+  | ((.locations[0].physicalLocation.artifactLocation.uri // "") | ltrimstr("./")) as $uri
+  | select(
+      ($uri | startswith("third-party/") | not)
+      and (($changed_files | length) == 0 or ($changed_files | index($uri)))
+    )
+  | {
+      uri: $uri,
+      line: (.locations[0].physicalLocation.region.startLine // 0),
+      tool: ($r.tool.driver.name // "Codacy"),
+      message: (.message.text // .ruleId // "Issue")
+    }
+'
+
+if [ "$CHANGED_FILES_JSON" = "[]" ]; then
+    SCOPE="entire repository"
+else
+    SCOPE="$(jq 'length' <<<"$CHANGED_FILES_JSON") changed file(s)"
+fi
+
+ISSUES=$(jq --argjson changed_files "$CHANGED_FILES_JSON" "[$RESULTS_FILTER] | length" "$OUT")
+echo "Codacy found $ISSUES issue(s) in $SCOPE (third-party/ excluded). Full report: $OUT"
 
 if [ "$ISSUES" -gt 0 ]; then
-    jq -r '.runs[] as $r | $r.results[]? | select((.locations[0].physicalLocation.artifactLocation.uri // "") | startswith("third-party/") | not) | "\(.locations[0].physicalLocation.artifactLocation.uri // "?"):\(.locations[0].physicalLocation.region.startLine // 0) [\($r.tool.driver.name)] \(.message.text // .ruleId)"' "$OUT"
+    jq -r --argjson changed_files "$CHANGED_FILES_JSON" "$RESULTS_FILTER | \"\(.uri):\(.line) [\(.tool)] \(.message)\"" "$OUT"
     exit 1
 fi
