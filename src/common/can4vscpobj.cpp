@@ -235,7 +235,11 @@ int semaphoreTimedWait(vscp_sem_t *psem, uint32_t timeoutMs) {
     deadline.tv_nsec %= 1000000000L;
   }
 
-  return sem_timedwait(psem, &deadline);
+  const int waitResult = sem_timedwait(psem, &deadline);
+  if ((-1 == waitResult) && (ETIMEDOUT == errno)) {
+    errno = EAGAIN; // normalize timeout errno with the macOS wrapper
+  }
+  return waitResult;
 #endif
 }
 
@@ -406,12 +410,15 @@ CCan4VSCPObj::~CCan4VSCPObj() {
 
   LOCK_MUTEX(m_transmitMutex);
   dll_removeAllNodes(&m_transmitList);
+  UNLOCK_MUTEX(m_transmitMutex);
 
   LOCK_MUTEX(m_receiveMutex);
   dll_removeAllNodes(&m_receiveList);
+  UNLOCK_MUTEX(m_receiveMutex);
 
   LOCK_MUTEX(m_responseMutex);
   dll_removeAllNodes(&m_responseList);
+  UNLOCK_MUTEX(m_responseMutex);
 
 #ifdef WIN32
 
@@ -938,9 +945,6 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags) {
   // We are open
   m_bOpen = true;
 
-  // Release the mutex
-  pthread_mutex_unlock(&m_can4vscpMutex);
-
 #endif
 
   for (int i = 0; i < 3; i++) {
@@ -1102,27 +1106,53 @@ int CCan4VSCPObj::close(void)
   m_bRun = false;
   m_bOpen = false;
 
-  //SLEEP(1000); // Give working threads some time to terminate
-  
-  LOCK_MUTEX(m_transmitMutex);
-  LOCK_MUTEX(m_receiveMutex);
-  LOCK_MUTEX(m_responseMutex);
-  if (m_bDebug) {
-    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Mutexes locked");
-  }
-
-  UNLOCK_MUTEX(m_transmitMutex);
-  UNLOCK_MUTEX(m_receiveMutex);
-  UNLOCK_MUTEX(m_responseMutex);
-  if (m_bDebug) {
-    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Mutexes unlocked");
-  }
-
 #ifdef DEBUG_CAN4VSCP_RECEIVE
   fclose(m_flog);
 #endif
 
-  UNLOCK_MUTEX(m_can4vscpMutex);
+  // Wake the worker threads so they can detect m_bRun == false
+#ifdef WIN32
+  SetEvent(m_receiveDataEvent);
+  SetEvent(m_transmitDataPutEvent);
+  SetEvent(m_transmitDataGetEvent);
+  SetEvent(m_transmitAckNackEvent);
+#else
+  semaphorePost(&m_receiveDataSem);
+  semaphorePost(&m_transmitDataPutSem);
+  semaphorePost(&m_transmitDataGetSem);
+  semaphorePost(&m_transmitAckNackSem);
+  if (m_bDebug) {
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
+  }
+#endif
+
+  // Wait for the worker threads to terminate before any resource
+  // they use is released
+#ifdef WIN32
+  DWORD rv;
+
+  // Wait for transmit thread to terminate
+  while (true) {
+    GetExitCodeThread(m_hTreadTransmit, &rv);
+    if (STILL_ACTIVE != rv)
+      break;
+    SLEEP(1);
+  }
+
+  // Wait for receive thread to terminate
+  while (true) {
+    GetExitCodeThread(m_hTreadReceive, &rv);
+    if (STILL_ACTIVE != rv)
+      break;
+    SLEEP(1);
+  }
+#else
+  pthread_join(m_threadIdReceive, NULL);
+  pthread_join(m_threadIdTransmit, NULL);
+  if (m_bDebug) {
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Threads joined.");
+  }
+#endif
 
   // Close the com port if its open
   if (m_com.isOpen()) {
@@ -1132,66 +1162,8 @@ int CCan4VSCPObj::close(void)
     }
   }
 
-#ifdef WIN32
-  SetEvent(m_receiveDataEvent);
-  SetEvent(m_transmitDataPutEvent);
-  SetEvent(m_transmitDataGetEvent);
-  ResetEvent(m_transmitAckNackEvent);
-#else
-  semaphorePost(&m_receiveDataSem);
-  semaphorePost(&m_transmitDataPutSem);
-  semaphorePost(&m_transmitDataGetSem);
-  if (m_bDebug) {
-    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
-  }
-#endif
-
-  // terminate the worker thread
-#ifdef WIN32
-  DWORD rv;
-
-  // Wait for transmit thread to terminate
-  while (true) {
-    GetExitCodeThread(m_hTreadTransmit, &rv);
-    if (STILL_ACTIVE != rv)
-      break;
-  }
-
-  // Wait for receive thread to terminate
-  while (true) {
-    GetExitCodeThread(m_hTreadReceive, &rv);
-    if (STILL_ACTIVE != rv)
-      break;
-  }
-#else
-  semaphoreDestroy(&m_receiveDataSem);
-  semaphoreDestroy(&m_transmitDataPutSem);
-  semaphoreDestroy(&m_transmitDataGetSem);
-  if (m_bDebug) {
-    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores destroyed.");
-  }
-
-  pthread_mutex_destroy(&m_transmitMutex);
-  pthread_mutex_destroy(&m_receiveMutex);
-  pthread_mutex_destroy(&m_responseMutex);
-
-  pthread_join(m_threadIdReceive, NULL);
-  if (m_bDebug) {
-    driverLog(spdlog::level::debug,
-          "[vscpl1drv-can4vscp] Closing driver: Thread receive rv = %d.",
-          1);
-  }
-  pthread_join(m_threadIdTransmit, NULL);
-  if (m_bDebug) {
-    driverLog(spdlog::level::debug,
-          "[vscpl1drv-can4vscp] Closing driver: Thread receive rv = %d.",
-          2);
-  }
-  pthread_mutex_destroy(&m_can4vscpMutex);
-  if (m_bDebug) {
-    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Threads joined.");
-  }
-#endif
+  // Mutexes/semaphores are destroyed in the destructor so the
+  // channel can be reopened after close
 
   if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Driver close success");
@@ -1413,11 +1385,8 @@ int CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout) {
     }
 #else
     res = semaphoreTimedWait(&m_transmitDataPutSem, Timeout);
-    if ((0 != res) && (EAGAIN == errno)) {
-      return CANAL_ERROR_TIMEOUT;
-    }
-    else {
-      return CANAL_ERROR_GENERIC;
+    if (0 != res) {
+      return (EAGAIN == errno) ? CANAL_ERROR_TIMEOUT : CANAL_ERROR_GENERIC;
     }
 #endif
   }
@@ -1468,19 +1437,23 @@ int CCan4VSCPObj::readMsg(canalMsg *pMsg) {
     return CANAL_ERROR_NOT_OPEN;
   }
 
-  if (0 == m_receiveList.nCount) {
+  LOCK_MUTEX(m_receiveMutex);
+  if ((0 == m_receiveList.nCount) || (NULL == m_receiveList.pHead) ||
+      (NULL == m_receiveList.pHead->pObject)) {
+    UNLOCK_MUTEX(m_receiveMutex);
     return CANAL_ERROR_FIFO_EMPTY;
   }
 
   memcpy(pMsg, m_receiveList.pHead->pObject, sizeof(canalMsg));
-
-  LOCK_MUTEX(m_receiveMutex);
   dll_removeNode(&m_receiveList, m_receiveList.pHead);
   if (m_receiveList.nCount == 0) {
 #ifdef WIN32
     ResetEvent(m_receiveDataEvent);
 #else
-    semaphorePost(&m_receiveDataSem);
+    // Drain stale wakeup tokens now that the queue is empty
+    while (0 == semaphoreTimedWait(&m_receiveDataSem, 0)) {
+      ;
+    }
 #endif
   }
   UNLOCK_MUTEX(m_receiveMutex);
@@ -1528,19 +1501,24 @@ int CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout) {
 #endif
   }
 
-  if (m_receiveList.nCount > 0) {
-    LOCK_MUTEX(m_receiveMutex);
+  LOCK_MUTEX(m_receiveMutex);
+  if ((m_receiveList.nCount > 0) && (NULL != m_receiveList.pHead) &&
+      (NULL != m_receiveList.pHead->pObject)) {
     memcpy(pMsg, m_receiveList.pHead->pObject, sizeof(canalMsg));
     dll_removeNode(&m_receiveList, m_receiveList.pHead);
     if (0 == m_receiveList.nCount) {
 #ifdef WIN32
       ResetEvent(m_receiveDataEvent);
 #else
-      semaphorePost(&m_receiveDataSem);
+      // Drain stale wakeup tokens now that the queue is empty
+      while (0 == semaphoreTimedWait(&m_receiveDataSem, 0)) {
+        ;
+      }
 #endif
     }
     UNLOCK_MUTEX(m_receiveMutex);
   } else {
+    UNLOCK_MUTEX(m_receiveMutex);
     return CANAL_ERROR_FIFO_EMPTY;
   }
 
@@ -1603,6 +1581,7 @@ bool CCan4VSCPObj::getDeviceCapabilities(void) {
 
   // Payload: Our capabilities
   const uint8_t payload[2] = {1, 10};
+  const uint8_t saveseq = m_sequencyno; // Sequency used for this frame
   const uint16_t len =
       can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_REQUEST,
                           0, m_sequencyno++, 2, payload, 2);
@@ -1617,20 +1596,24 @@ bool CCan4VSCPObj::getDeviceCapabilities(void) {
 
   // Wait for reply
 
-  uint8_t saveseq = m_sequencyno; // Save the sequency ordinal
   cmdResponseMsg msgResponse;
   uint32_t start = getClockMilliSeconds();
 
   while (getClockMilliSeconds() < (start + 500)) {
 
+    bool bResponse = false;
+
+    LOCK_MUTEX(m_responseMutex);
     if ((NULL != m_responseList.pHead) &&
         (NULL != m_responseList.pHead->pObject)) {
-
       memcpy(&msgResponse, m_responseList.pHead->pObject,
              sizeof(cmdResponseMsg));
-      LOCK_MUTEX(m_responseMutex);
       dll_removeNode(&m_responseList, m_responseList.pHead);
-      UNLOCK_MUTEX(m_responseMutex);
+      bResponse = true;
+    }
+    UNLOCK_MUTEX(m_responseMutex);
+
+    if (bResponse) {
 
       if ((VSCP_SERIAL_DRIVER_CAPS_SIZE == msgResponse.sizePayload) &&
           (saveseq == msgResponse.seq) &&
@@ -1729,19 +1712,21 @@ bool CCan4VSCPObj::wait4CommandResponse(cmdResponseMsg *pMsg, uint8_t cmdcode,
 
   while (getClockMilliSeconds() < (start + timeout)) {
 
+    bool bResponse = false;
+
+    LOCK_MUTEX(m_responseMutex);
     if ((NULL != m_responseList.pHead) &&
         (NULL != m_responseList.pHead->pObject)) {
-
       memcpy(pMsg, m_responseList.pHead->pObject, sizeof(cmdResponseMsg));
-      LOCK_MUTEX(m_responseMutex);
       dll_removeNode(&m_responseList, m_responseList.pHead);
-      UNLOCK_MUTEX(m_responseMutex);
+      bResponse = true;
+    }
+    UNLOCK_MUTEX(m_responseMutex);
 
-      if ((2 == pMsg->sizePayload) && (saveseq == pMsg->seq) &&
-          (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND_REPLY == pMsg->op) &&
-          (0 == pMsg->payload[0]) && (cmdcode == pMsg->payload[1])) {
-        return true;
-      }
+    if (bResponse && (2 == pMsg->sizePayload) && (saveseq == pMsg->seq) &&
+        (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND_REPLY == pMsg->op) &&
+        (0 == pMsg->payload[0]) && (cmdcode == pMsg->payload[1])) {
+      return true;
     }
 
     SLEEP(10);
@@ -1809,13 +1794,18 @@ bool CCan4VSCPObj::wait4ConfigResponse(cmdResponseMsg *pMsg, uint8_t codeConfig,
 
   while (getClockMilliSeconds() < (start + timeout)) {
 
+    bool bResponse = false;
+
+    LOCK_MUTEX(m_responseMutex);
     if ((NULL != m_responseList.pHead) &&
         (NULL != m_responseList.pHead->pObject)) {
-
       memcpy(pMsg, m_responseList.pHead->pObject, sizeof(cmdResponseMsg));
-      LOCK_MUTEX(m_responseMutex);
       dll_removeNode(&m_responseList, m_responseList.pHead);
-      UNLOCK_MUTEX(m_responseMutex);
+      bResponse = true;
+    }
+    UNLOCK_MUTEX(m_responseMutex);
+
+    if (bResponse) {
 
       if ((2 == pMsg->sizePayload) && (saveseq == pMsg->seq) &&
           (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK == pMsg->op) &&
@@ -1872,12 +1862,8 @@ void CCan4VSCPObj::sendACK(uint8_t seq) {
   const uint16_t len = can4vscp_buildFrame(
       sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK, 0, seq, 0, NULL, 0);
 
-  LOCK_MUTEX(m_can4vscpMutex);
-
-  // Send the event
+  // Send the event (sendMsg serializes port access)
   sendMsg(sendData, len);
-
-  UNLOCK_MUTEX(m_can4vscpMutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1891,12 +1877,8 @@ void CCan4VSCPObj::sendNACK(uint8_t seq) {
   const uint16_t len = can4vscp_buildFrame(
       sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK, 0, seq, 0, NULL, 0);
 
-  LOCK_MUTEX(m_can4vscpMutex);
-
-  // Send the event
+  // Send the event (sendMsg serializes port access)
   sendMsg(sendData, len);
-
-  UNLOCK_MUTEX(m_can4vscpMutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1911,12 +1893,8 @@ void CCan4VSCPObj::sendNoopFrame(void) {
       can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP, 0,
                           m_sequencyno++, 0, NULL, 0);
 
-  LOCK_MUTEX(m_can4vscpMutex);
-
-  // Send the event
+  // Send the event (sendMsg serializes port access)
   sendMsg(sendData, len);
-
-  UNLOCK_MUTEX(m_can4vscpMutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1925,42 +1903,40 @@ void CCan4VSCPObj::sendNoopFrame(void) {
 //
 
 bool CCan4VSCPObj::addToResponseQueue(void) {
-  if ((m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) &&
-      msgResponseInfo.bWaitingForAckNack) {
+  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) {
 
-    // bool t1 = ( msgResponseInfo.channel ==
-    //         m_bufferMsgRcv[ VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL ] );
-    // bool t2 = ( msgResponseInfo.seq ==
-    //         m_bufferMsgRcv[ VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY ] );
-    // bool t3 = ( t1 && t2 );
-    if (msgResponseInfo.channel ==
-        m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL]) {
+    LOCK_MUTEX(m_responseMutex);
+    if (msgResponseInfo.bWaitingForAckNack &&
+        (msgResponseInfo.channel ==
+         m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL]) &&
+        (msgResponseInfo.seq ==
+         m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY])) {
 
-      if (msgResponseInfo.seq ==
-          m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY]) {
+      if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK ==
+          m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE]) {
 
-        if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK ==
-            m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE]) {
-
-          //  Positive things happens here
-          msgResponseInfo.bAck = true;
+        //  Positive things happens here
+        msgResponseInfo.bAck = true;
+        msgResponseInfo.bWaitingForAckNack = false;
 #ifdef WIN32
-          SetEvent(m_transmitAckNackEvent);
+        SetEvent(m_transmitAckNackEvent);
 #else
-          semaphorePost(&m_transmitAckNackSem);
+        semaphorePost(&m_transmitAckNackSem);
 #endif
-        } else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK ==
-                   m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE]) {
-          //  Negative things happen to, sometimes
-          msgResponseInfo.bAck = false;
+      } else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK ==
+                 m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE]) {
+
+        //  Negative things happen to, sometimes
+        msgResponseInfo.bAck = false;
+        msgResponseInfo.bWaitingForAckNack = false;
 #ifdef WIN32
-          SetEvent(m_transmitAckNackEvent);
+        SetEvent(m_transmitAckNackEvent);
 #else
-          semaphorePost(&m_transmitAckNackSem);
+        semaphorePost(&m_transmitAckNackSem);
 #endif
-        }
       }
     }
+    UNLOCK_MUTEX(m_responseMutex);
   }
 
   cmdResponseMsg *pMsg = new cmdResponseMsg;
@@ -1982,6 +1958,10 @@ bool CCan4VSCPObj::addToResponseQueue(void) {
 
       pNode->pObject = pMsg;
       LOCK_MUTEX(m_responseMutex);
+      // Bound the queue - drop the oldest response if full
+      if (m_responseList.nCount >= CAN4VSCP_MAX_RESPONSEMSG) {
+        dll_removeNode(&m_responseList, m_responseList.pHead);
+      }
       dll_addNode(&m_responseList, pNode);
       UNLOCK_MUTEX(m_responseMutex);
 
@@ -2706,12 +2686,17 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] transmitMessage");
   }
 
-  // Must be a message to transmit
-  if (0 == pobj->m_transmitList.nCount)
+  // Must be a message to transmit - fetch a copy under lock
+  LOCK_MUTEX(pobj->m_transmitMutex);
+  if ((0 == pobj->m_transmitList.nCount) ||
+      (NULL == pobj->m_transmitList.pHead) ||
+      (NULL == pobj->m_transmitList.pHead->pObject)) {
+    UNLOCK_MUTEX(pobj->m_transmitMutex);
     return false;
+  }
 
-  // Fetch a copy of the message
   memcpy(&msg, pobj->m_transmitList.pHead->pObject, sizeof(canalMsg));
+  UNLOCK_MUTEX(pobj->m_transmitMutex);
 
   // CANAL message
   // -------------
@@ -2749,25 +2734,25 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
       sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL, 0, (*pseq)++,
       (uint16_t)(4 + msg.sizeData), payload, lenPayload);
 
-  // Clear ACK/NACK structure
+  // Arm the ACK/NACK mechanism before the frame goes out so the
+  // response cannot be missed
+#ifdef WIN32
+  ResetEvent(pobj->m_transmitAckNackEvent);
+#endif
+  LOCK_MUTEX(pobj->m_responseMutex);
   pobj->msgResponseInfo.bAck = false; // We start out being pessimistic
-  pobj->msgResponseInfo.channel =
-      0; // Well it is alread but what the heck - to be clear about it
+  pobj->msgResponseInfo.channel = 0;
   pobj->msgResponseInfo.seq = *pseq - 1; // Sequency for frame
+  pobj->msgResponseInfo.bWaitingForAckNack = true;
+  UNLOCK_MUTEX(pobj->m_responseMutex);
 
   // Send the event
   if (!pobj->sendMsg(sendData, len)) {
+    LOCK_MUTEX(pobj->m_responseMutex);
+    pobj->msgResponseInfo.bWaitingForAckNack = false;
+    UNLOCK_MUTEX(pobj->m_responseMutex);
     return false;
   }
-
-#ifdef WIN32
-  ResetEvent(pobj->m_transmitAckNackEvent);
-#else
-
-#endif
-
-  // Arm the ACK/NACK mechanism
-  pobj->msgResponseInfo.bWaitingForAckNack = true;
 
   return true;
 }
@@ -2822,41 +2807,54 @@ void *workThreadTransmit(void *pObject)
           WaitForSingleObject(pobj->m_transmitAckNackEvent, 500)) {
         // We did not get a ACK/NACK in time - resend frame
         transmitMessage(pobj, &seq);
-        bTransmissionInProgress = true;
         continue;
       }
 #else
-  res = semaphoreTimedWait(&pobj->m_transmitAckNackSem, 20);
-  if ((0 != res) && (EAGAIN == errno)) {
+      res = semaphoreTimedWait(&pobj->m_transmitAckNackSem, 20);
+      if (0 != res) {
         // We did not get a ACK/NACK in time - resend frame
         transmitMessage(pobj, &seq);
         continue;
       }
 #endif
 
-      if (pobj->msgResponseInfo.bAck) {
+      bool bAck;
+      LOCK_MUTEX(pobj->m_responseMutex);
+      bAck = pobj->msgResponseInfo.bAck;
+      UNLOCK_MUTEX(pobj->m_responseMutex);
+
+      if (bAck) {
 
         // ACK - Message sent successfully
 
         canalMsg msg;
 
-        if (0 == pobj->m_transmitList.nCount &&
-            (NULL != pobj->m_transmitList.pHead->pObject)) {
+        LOCK_MUTEX(pobj->m_transmitMutex);
+        if ((0 == pobj->m_transmitList.nCount) ||
+            (NULL == pobj->m_transmitList.pHead) ||
+            (NULL == pobj->m_transmitList.pHead->pObject)) {
           // Should not happen but if it does anyway... ;-/
+          UNLOCK_MUTEX(pobj->m_transmitMutex);
           bTransmissionInProgress = false;
           continue;
         }
 
         memcpy(&msg, pobj->m_transmitList.pHead->pObject, sizeof(canalMsg));
 
+        // If ACK remove the event from the queue
+        dll_removeNode(&pobj->m_transmitList, pobj->m_transmitList.pHead);
+        UNLOCK_MUTEX(pobj->m_transmitMutex);
+
         // Update statistics
         pobj->m_stat.cntTransmitData += msg.sizeData;
         pobj->m_stat.cntTransmitFrames += 1;
 
-        // If ACK remove the event from the queue
-        LOCK_MUTEX(pobj->m_transmitMutex);
-        dll_removeNode(&pobj->m_transmitList, pobj->m_transmitList.pHead);
-        UNLOCK_MUTEX(pobj->m_transmitMutex);
+        // Wake any writer blocked on a full transmit queue
+#ifdef WIN32
+        SetEvent(pobj->m_transmitDataPutEvent);
+#else
+        semaphorePost(&pobj->m_transmitDataPutSem);
+#endif
 
         bTransmissionInProgress = false;
       } 
@@ -2877,8 +2875,8 @@ void *workThreadTransmit(void *pObject)
         continue;
       }
 #else
-  res = semaphoreTimedWait(&pobj->m_transmitDataGetSem, 1);
-  if ((0 != res) && (EAGAIN == errno)) {
+      res = semaphoreTimedWait(&pobj->m_transmitDataGetSem, 1);
+      if (0 != res) {
         continue;
       }
 #endif
@@ -2887,30 +2885,43 @@ void *workThreadTransmit(void *pObject)
     // If there is something to transmit, well, then transmit it
     if (pobj->m_transmitList.nCount > 0) {
 
-      bool rvtx = transmitMessage(pobj, &seq);
-      bTransmissionInProgress = true;
+      if (transmitMessage(pobj, &seq)) {
 
-      if (rvtx) {
-
-        canalMsg msg;
-
-        if (0 == pobj->m_transmitList.nCount &&
-            (NULL != pobj->m_transmitList.pHead->pObject)) {
-          // Should not happen but if it does anyway... ;-/
-          bTransmissionInProgress = false;
-          continue;
+        if (pobj->m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) {
+          // The message stays in the queue until ACK/NACK arrives
+          bTransmissionInProgress = true;
         }
+        else {
 
-        memcpy(&msg, pobj->m_transmitList.pHead->pObject, sizeof(canalMsg));
+          canalMsg msg;
 
-        // Update statistics
-        pobj->m_stat.cntTransmitData += msg.sizeData;
-        pobj->m_stat.cntTransmitFrames += 1;
+          LOCK_MUTEX(pobj->m_transmitMutex);
+          if ((pobj->m_transmitList.nCount > 0) &&
+              (NULL != pobj->m_transmitList.pHead) &&
+              (NULL != pobj->m_transmitList.pHead->pObject)) {
 
-        // Remove the event from the queue
-        LOCK_MUTEX(pobj->m_transmitMutex);
-        dll_removeNode(&pobj->m_transmitList, pobj->m_transmitList.pHead);
-        UNLOCK_MUTEX(pobj->m_transmitMutex);
+            memcpy(&msg, pobj->m_transmitList.pHead->pObject,
+                   sizeof(canalMsg));
+
+            // Remove the event from the queue
+            dll_removeNode(&pobj->m_transmitList, pobj->m_transmitList.pHead);
+            UNLOCK_MUTEX(pobj->m_transmitMutex);
+
+            // Update statistics
+            pobj->m_stat.cntTransmitData += msg.sizeData;
+            pobj->m_stat.cntTransmitFrames += 1;
+
+            // Wake any writer blocked on a full transmit queue
+#ifdef WIN32
+            SetEvent(pobj->m_transmitDataPutEvent);
+#else
+            semaphorePost(&pobj->m_transmitDataPutSem);
+#endif
+          }
+          else {
+            UNLOCK_MUTEX(pobj->m_transmitMutex);
+          }
+        }
       }
 
     } 
@@ -2972,9 +2983,10 @@ void *workThreadReceive(void *pObject)
 
   while (pobj->m_bRun) {
 
-    LOCK_MUTEX(pobj->m_can4vscpMutex);
+    // Serial writes are serialized inside sendMsg(). Holding
+    // m_can4vscpMutex here would deadlock when readSerialData()
+    // answers with sendACK()/sendNACK().
     pobj->readSerialData();
-    UNLOCK_MUTEX(pobj->m_can4vscpMutex);
 
     SLEEP(10);
 
