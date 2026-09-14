@@ -1,6 +1,6 @@
 [submodule "third-party/vscp"]
 	path = third-party/vscp
-	url = https://github.com/grodansparadis/vscp
+	url = https://github.com/grodansparadis/vscp.git
 [submodule "third-party/spdlog"]
 	path = third-party/spdlog
 	url = https://github.com/gabime/spdlog.git
