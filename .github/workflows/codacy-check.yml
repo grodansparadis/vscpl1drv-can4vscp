@@ -5,17 +5,25 @@ on:
     branches: ["main", "master"]
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   codacy-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Run Codacy check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./codacy_check.sh
 
       - name: Upload SARIF report
