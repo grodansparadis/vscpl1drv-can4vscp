@@ -5,6 +5,10 @@ on:
     branches: ["main", "master"]
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   codacy-check:
     runs-on: ubuntu-latest

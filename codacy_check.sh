@@ -100,8 +100,8 @@ get_changed_files_json() {
                 return 1
             fi
 
-            if ! changed_files=$(git diff --name-only "$diff_range"); then
-                echo "Unable to determine changed files for Codacy scope using range: $diff_range" >&2
+            if ! changed_files=$(git diff --name-only "$base_sha" "$head_sha"); then
+                echo "Unable to determine changed files for Codacy scope using endpoints: $base_sha $head_sha" >&2
                 return 1
             fi
         fi
