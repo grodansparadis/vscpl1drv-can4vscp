@@ -14,22 +14,35 @@ get_changed_files_json() {
 
     local changed_files=""
 
-    if [ -f "$event_path" ]; then
-        case "$event_name" in
-        pull_request)
-            base_sha=$(jq -r '.pull_request.base.sha // empty' "$event_path")
-            head_sha=$(jq -r '.pull_request.head.sha // empty' "$event_path")
-            diff_range="$base_sha...$head_sha"
-            ;;
-        push)
-            base_sha=$(jq -r '.before // empty' "$event_path")
-            head_sha=$(jq -r '.after // empty' "$event_path")
-            diff_range="$base_sha..$head_sha"
-            ;;
-        esac
-    fi
+    case "$event_name" in
+    pull_request)
+        if [ ! -f "$event_path" ]; then
+            echo "Missing GitHub event payload for Codacy pull request scope" >&2
+            return 1
+        fi
 
-    if [ -n "$base_sha" ] && [ -n "$head_sha" ] && [ -n "$diff_range" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ]; then
+        base_sha=$(jq -r '.pull_request.base.sha // empty' "$event_path")
+        head_sha=$(jq -r '.pull_request.head.sha // empty' "$event_path")
+        diff_range="$base_sha...$head_sha"
+        ;;
+    push)
+        if [ ! -f "$event_path" ]; then
+            echo "Missing GitHub event payload for Codacy push scope" >&2
+            return 1
+        fi
+
+        base_sha=$(jq -r '.before // empty' "$event_path")
+        head_sha=$(jq -r '.after // empty' "$event_path")
+        diff_range="$base_sha..$head_sha"
+        ;;
+    esac
+
+    if [ "$event_name" = "pull_request" ] || [ "$event_name" = "push" ]; then
+        if [ -z "$base_sha" ] || [ -z "$head_sha" ] || [ -z "$diff_range" ] || [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
+            echo "Unable to determine changed files for Codacy scope from GitHub event metadata" >&2
+            return 1
+        fi
+
         if ! changed_files=$(git diff --name-only "$diff_range"); then
             echo "Unable to determine changed files for Codacy scope using range: $diff_range" >&2
             return 1
