@@ -56,13 +56,21 @@
 //
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-static void can4vscpDebugStamp(FILE *pf)
+static void
+can4vscpDebugStamp(FILE *pf)
 {
 #ifdef WIN32
   SYSTEMTIME st;
   GetLocalTime(&st);
-  fprintf(pf, "%04u-%02u-%02u %02u:%02u:%02u.%03u ", st.wYear, st.wMonth,
-          st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+  fprintf(pf,
+          "%04u-%02u-%02u %02u:%02u:%02u.%03u ",
+          st.wYear,
+          st.wMonth,
+          st.wDay,
+          st.wHour,
+          st.wMinute,
+          st.wSecond,
+          st.wMilliseconds);
 #else
   timeval tv;
   gettimeofday(&tv, NULL);
@@ -70,209 +78,191 @@ static void can4vscpDebugStamp(FILE *pf)
   localtime_r(&tv.tv_sec, &tmnow);
   char tbuf[32];
   strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &tmnow);
-  fprintf(pf, "%s.%03ld ", tbuf, (long)(tv.tv_usec / 1000));
+  fprintf(pf, "%s.%03ld ", tbuf, (long) (tv.tv_usec / 1000));
 #endif
 }
 
-#define DEBUG_RCV_PRINT(...)        \
-  do                                \
-  {                                 \
-    if (NULL != m_flog)             \
-    {                               \
-      can4vscpDebugStamp(m_flog);   \
-      fprintf(m_flog, __VA_ARGS__); \
-      fflush(m_flog);               \
-    }                               \
+#define DEBUG_RCV_PRINT(...)                                                                                           \
+  do {                                                                                                                 \
+    if (NULL != m_flog) {                                                                                              \
+      can4vscpDebugStamp(m_flog);                                                                                      \
+      fprintf(m_flog, __VA_ARGS__);                                                                                    \
+      fflush(m_flog);                                                                                                  \
+    }                                                                                                                  \
   } while (0)
 #else
-#define DEBUG_RCV_PRINT(...) \
-  do                         \
-  {                          \
+#define DEBUG_RCV_PRINT(...)                                                                                           \
+  do {                                                                                                                 \
   } while (0)
 #endif
 
-namespace
-{
+namespace {
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // UdpDebugSink
-  //
-  // Sends driver debug output as UDP datagrams to a configurable target
-  //
+///////////////////////////////////////////////////////////////////////////////
+// UdpDebugSink
+//
+// Sends driver debug output as UDP datagrams to a configurable target
+//
 
-  class UdpDebugSink
+class UdpDebugSink {
+public:
+  bool open(const char *host, unsigned short port)
   {
-  public:
-    bool open(const char *host, unsigned short port)
-    {
-      std::lock_guard<std::mutex> lock(m_mutex);
-      closeUnlocked();
+    std::lock_guard<std::mutex> lock(m_mutex);
+    closeUnlocked();
 
-      memset(&m_addr, 0, sizeof(m_addr));
-      m_addr.sin_family = AF_INET;
-      m_addr.sin_port = htons(port);
+    memset(&m_addr, 0, sizeof(m_addr));
+    m_addr.sin_family = AF_INET;
+    m_addr.sin_port   = htons(port);
 
 #ifdef WIN32
-      WSADATA wsaData;
-      if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData))
-      {
-        return false;
-      }
-      m_bWsaInit = true;
-      unsigned long ip = inet_addr(host);
-      if (INADDR_NONE == ip)
-      {
-        hostent *phe = gethostbyname(host);
-        if ((NULL == phe) || (NULL == phe->h_addr_list[0]))
-        {
-          closeUnlocked();
-          return false;
-        }
-        memcpy(&m_addr.sin_addr, phe->h_addr_list[0], sizeof(m_addr.sin_addr));
-      }
-      else
-      {
-        m_addr.sin_addr.s_addr = ip;
-      }
-      m_sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-      if (INVALID_SOCKET == m_sock)
-      {
+    WSADATA wsaData;
+    if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
+      return false;
+    }
+    m_bWsaInit       = true;
+    unsigned long ip = inet_addr(host);
+    if (INADDR_NONE == ip) {
+      hostent *phe = gethostbyname(host);
+      if ((NULL == phe) || (NULL == phe->h_addr_list[0])) {
         closeUnlocked();
         return false;
       }
-#else
-      addrinfo hints;
-      memset(&hints, 0, sizeof(hints));
-      hints.ai_family = AF_INET;
-      hints.ai_socktype = SOCK_DGRAM;
-      addrinfo *pres = NULL;
-      if ((0 != getaddrinfo(host, NULL, &hints, &pres)) || (NULL == pres))
-      {
-        return false;
-      }
-      memcpy(&m_addr.sin_addr,
-             &(reinterpret_cast<sockaddr_in *>(pres->ai_addr))->sin_addr,
-             sizeof(m_addr.sin_addr));
-      freeaddrinfo(pres);
-      m_sock = ::socket(AF_INET, SOCK_DGRAM, 0);
-      if (m_sock < 0)
-      {
-        m_sock = -1;
-        return false;
-      }
-#endif
-      return true;
+      memcpy(&m_addr.sin_addr, phe->h_addr_list[0], sizeof(m_addr.sin_addr));
     }
-
-    void close()
-    {
-      std::lock_guard<std::mutex> lock(m_mutex);
+    else {
+      m_addr.sin_addr.s_addr = ip;
+    }
+    m_sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (INVALID_SOCKET == m_sock) {
       closeUnlocked();
+      return false;
     }
-
-    bool isOpen()
-    {
-      std::lock_guard<std::mutex> lock(m_mutex);
-#ifdef WIN32
-      return (INVALID_SOCKET != m_sock);
 #else
-      return (-1 != m_sock);
+    addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    addrinfo *pres    = NULL;
+    if ((0 != getaddrinfo(host, NULL, &hints, &pres)) || (NULL == pres)) {
+      return false;
+    }
+    memcpy(&m_addr.sin_addr, &(reinterpret_cast<sockaddr_in *>(pres->ai_addr))->sin_addr, sizeof(m_addr.sin_addr));
+    freeaddrinfo(pres);
+    m_sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+    if (m_sock < 0) {
+      m_sock = -1;
+      return false;
+    }
 #endif
-    }
-
-    void send(const std::string &msg)
-    {
-      std::lock_guard<std::mutex> lock(m_mutex);
-#ifdef WIN32
-      if (INVALID_SOCKET == m_sock)
-      {
-        return;
-      }
-      (void)::sendto(m_sock, msg.c_str(), static_cast<int>(msg.size()), 0,
-                     reinterpret_cast<const sockaddr *>(&m_addr), sizeof(m_addr));
-#else
-      if (-1 == m_sock)
-      {
-        return;
-      }
-      (void)::sendto(m_sock, msg.c_str(), msg.size(), 0,
-                     reinterpret_cast<const sockaddr *>(&m_addr), sizeof(m_addr));
-#endif
-    }
-
-  private:
-    void closeUnlocked()
-    {
-#ifdef WIN32
-      if (INVALID_SOCKET != m_sock)
-      {
-        closesocket(m_sock);
-        m_sock = INVALID_SOCKET;
-      }
-      if (m_bWsaInit)
-      {
-        WSACleanup();
-        m_bWsaInit = false;
-      }
-#else
-      if (-1 != m_sock)
-      {
-        ::close(m_sock);
-        m_sock = -1;
-      }
-#endif
-    }
-
-    std::mutex m_mutex;
-    sockaddr_in m_addr;
-#ifdef WIN32
-    SOCKET m_sock = INVALID_SOCKET;
-    bool m_bWsaInit = false;
-#else
-    int m_sock = -1;
-#endif
-  };
-
-  UdpDebugSink gUdpDebugSink;
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // nextConfigToken
-  //
-  // Next ';'-separated token, preserving empty fields (unlike strtok)
-  //
-
-  char *nextConfigToken(char **ppCursor)
-  {
-    if ((NULL == ppCursor) || (NULL == *ppCursor))
-    {
-      return NULL;
-    }
-    char *pToken = *ppCursor;
-    char *pSep = strchr(pToken, ';');
-    if (NULL != pSep)
-    {
-      *pSep = 0;
-      *ppCursor = pSep + 1;
-    }
-    else
-    {
-      *ppCursor = NULL;
-    }
-    return pToken;
+    return true;
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // syslogPriority
-  //
+  void close()
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    closeUnlocked();
+  }
+
+  bool isOpen()
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+#ifdef WIN32
+    return (INVALID_SOCKET != m_sock);
+#else
+    return (-1 != m_sock);
+#endif
+  }
+
+  void send(const std::string &msg)
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+#ifdef WIN32
+    if (INVALID_SOCKET == m_sock) {
+      return;
+    }
+    (void) ::sendto(m_sock,
+                    msg.c_str(),
+                    static_cast<int>(msg.size()),
+                    0,
+                    reinterpret_cast<const sockaddr *>(&m_addr),
+                    sizeof(m_addr));
+#else
+    if (-1 == m_sock) {
+      return;
+    }
+    (void) ::sendto(m_sock, msg.c_str(), msg.size(), 0, reinterpret_cast<const sockaddr *>(&m_addr), sizeof(m_addr));
+#endif
+  }
+
+private:
+  void closeUnlocked()
+  {
+#ifdef WIN32
+    if (INVALID_SOCKET != m_sock) {
+      closesocket(m_sock);
+      m_sock = INVALID_SOCKET;
+    }
+    if (m_bWsaInit) {
+      WSACleanup();
+      m_bWsaInit = false;
+    }
+#else
+    if (-1 != m_sock) {
+      ::close(m_sock);
+      m_sock = -1;
+    }
+#endif
+  }
+
+  std::mutex m_mutex;
+  sockaddr_in m_addr;
+#ifdef WIN32
+  SOCKET m_sock   = INVALID_SOCKET;
+  bool m_bWsaInit = false;
+#else
+  int m_sock = -1;
+#endif
+};
+
+UdpDebugSink gUdpDebugSink;
+
+///////////////////////////////////////////////////////////////////////////////
+// nextConfigToken
+//
+// Next ';'-separated token, preserving empty fields (unlike strtok)
+//
+
+char *
+nextConfigToken(char **ppCursor)
+{
+  if ((NULL == ppCursor) || (NULL == *ppCursor)) {
+    return NULL;
+  }
+  char *pToken = *ppCursor;
+  char *pSep   = strchr(pToken, ';');
+  if (NULL != pSep) {
+    *pSep     = 0;
+    *ppCursor = pSep + 1;
+  }
+  else {
+    *ppCursor = NULL;
+  }
+  return pToken;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// syslogPriority
+//
 
 #ifndef WIN32
-  // Minimum level for the syslog channel. spdlog::level::off disables it.
-  spdlog::level::level_enum gSyslogLevel = spdlog::level::info;
+// Minimum level for the syslog channel. spdlog::level::off disables it.
+spdlog::level::level_enum gSyslogLevel = spdlog::level::info;
 
-  int syslogPriority(spdlog::level::level_enum level)
-  {
-    switch (level)
-    {
+int
+syslogPriority(spdlog::level::level_enum level)
+{
+  switch (level) {
     case spdlog::level::trace:
     case spdlog::level::debug:
       return LOG_DEBUG;
@@ -285,220 +275,211 @@ namespace
     case spdlog::level::info:
     default:
       return LOG_INFO;
-    }
   }
+}
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // parseLogLevel
-  //
-  // Parse a log level name, default "info" when absent or unknown
-  //
+///////////////////////////////////////////////////////////////////////////////
+// parseLogLevel
+//
+// Parse a log level name, default "info" when absent or unknown
+//
 
-  spdlog::level::level_enum parseLogLevel(const char *pLevel)
-  {
-    if ((NULL == pLevel) || !*pLevel)
-    {
-      return spdlog::level::info;
-    }
-    if (0 == strcasecmp(pLevel, "trace"))
-    {
-      return spdlog::level::trace;
-    }
-    if (0 == strcasecmp(pLevel, "debug"))
-    {
-      return spdlog::level::debug;
-    }
-    if ((0 == strcasecmp(pLevel, "warn")) ||
-        (0 == strcasecmp(pLevel, "warning")))
-    {
-      return spdlog::level::warn;
-    }
-    if ((0 == strcasecmp(pLevel, "err")) || (0 == strcasecmp(pLevel, "error")))
-    {
-      return spdlog::level::err;
-    }
-    if (0 == strcasecmp(pLevel, "critical"))
-    {
-      return spdlog::level::critical;
-    }
-    if (0 == strcasecmp(pLevel, "off"))
-    {
-      return spdlog::level::off;
-    }
+spdlog::level::level_enum
+parseLogLevel(const char *pLevel)
+{
+  if ((NULL == pLevel) || !*pLevel) {
     return spdlog::level::info;
   }
+  if (0 == strcasecmp(pLevel, "trace")) {
+    return spdlog::level::trace;
+  }
+  if (0 == strcasecmp(pLevel, "debug")) {
+    return spdlog::level::debug;
+  }
+  if ((0 == strcasecmp(pLevel, "warn")) || (0 == strcasecmp(pLevel, "warning"))) {
+    return spdlog::level::warn;
+  }
+  if ((0 == strcasecmp(pLevel, "err")) || (0 == strcasecmp(pLevel, "error"))) {
+    return spdlog::level::err;
+  }
+  if (0 == strcasecmp(pLevel, "critical")) {
+    return spdlog::level::critical;
+  }
+  if (0 == strcasecmp(pLevel, "off")) {
+    return spdlog::level::off;
+  }
+  return spdlog::level::info;
+}
 #endif
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // driverLog
-  //
-  // Called to log a message with a specified log level. Mirrors the message to syslog and UDP debug target if enabled.
-  //
+///////////////////////////////////////////////////////////////////////////////
+// driverLog
+//
+// Called to log a message with a specified log level. Mirrors the message to syslog and UDP debug target if enabled.
+//
 
-  void driverLog(spdlog::level::level_enum level, const char *format, ...)
-  {
-    va_list args;
-    va_start(args, format);
+void
+driverLog(spdlog::level::level_enum level, const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
 
-    va_list args_copy;
-    va_copy(args_copy, args);
-    const int size = std::vsnprintf(nullptr, 0, format, args_copy);
-    va_end(args_copy);
+  va_list args_copy;
+  va_copy(args_copy, args);
+  const int size = std::vsnprintf(nullptr, 0, format, args_copy);
+  va_end(args_copy);
 
-    if (size < 0)
-    {
-      va_end(args);
-      return;
-    }
-
-    std::vector<char> buffer(static_cast<size_t>(size) + 1);
-    std::vsnprintf(buffer.data(), buffer.size(), format, args);
+  if (size < 0) {
     va_end(args);
-
-    std::string message(buffer.data(), static_cast<size_t>(size));
-    if (!message.empty() && '\n' == message.back())
-    {
-      message.pop_back();
-    }
-
-    spdlog::log(level, "{}", message);
-
-#ifndef WIN32
-    // Mirror the message to syslog if it passes the configured level
-    if ((spdlog::level::off != gSyslogLevel) && (level >= gSyslogLevel))
-    {
-      syslog(syslogPriority(level), "%s", message.c_str());
-    }
-#endif
-
-    // Mirror the message to the UDP debug target if enabled
-    if (gUdpDebugSink.isOpen())
-    {
-      const spdlog::string_view_t lvl = spdlog::level::to_string_view(level);
-      std::string datagram(lvl.data(), lvl.size());
-      datagram += ": ";
-      datagram += message;
-      gUdpDebugSink.send(datagram);
-    }
+    return;
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // semaphoreTimedWait
-  //
-  // Called to wait on a semaphore with a timeout. Returns 0 on success, -1 on failure (including timeout).
-  //
+  std::vector<char> buffer(static_cast<size_t>(size) + 1);
+  std::vsnprintf(buffer.data(), buffer.size(), format, args);
+  va_end(args);
+
+  std::string message(buffer.data(), static_cast<size_t>(size));
+  if (!message.empty() && '\n' == message.back()) {
+    message.pop_back();
+  }
+
+  spdlog::log(level, "{}", message);
 
 #ifndef WIN32
-  int semaphoreTimedWait(vscp_sem_t *psem, uint32_t timeoutMs)
-  {
+  // Mirror the message to syslog if it passes the configured level
+  if ((spdlog::level::off != gSyslogLevel) && (level >= gSyslogLevel)) {
+    syslog(syslogPriority(level), "%s", message.c_str());
+  }
+#endif
+
+  // Mirror the message to the UDP debug target if enabled
+  if (gUdpDebugSink.isOpen()) {
+    const spdlog::string_view_t lvl = spdlog::level::to_string_view(level);
+    std::string datagram(lvl.data(), lvl.size());
+    datagram += ": ";
+    datagram += message;
+    gUdpDebugSink.send(datagram);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// semaphoreTimedWait
+//
+// Called to wait on a semaphore with a timeout. Returns 0 on success, -1 on failure (including timeout).
+//
+
+#ifndef WIN32
+int
+semaphoreTimedWait(vscp_sem_t *psem, uint32_t timeoutMs)
+{
 #ifdef __APPLE__
-    if (0 == timeoutMs)
-    {
-      const long waitResult = dispatch_semaphore_wait(*psem, DISPATCH_TIME_NOW);
-      if (0 == waitResult)
-      {
-        return 0;
-      }
-
-      errno = EAGAIN;
-      return -1;
-    }
-
-    const dispatch_time_t timeout =
-        dispatch_time(DISPATCH_TIME_NOW, static_cast<int64_t>(timeoutMs) * 1000000LL);
-    const long waitResult = dispatch_semaphore_wait(*psem, timeout);
-    if (0 == waitResult)
-    {
+  if (0 == timeoutMs) {
+    const long waitResult = dispatch_semaphore_wait(*psem, DISPATCH_TIME_NOW);
+    if (0 == waitResult) {
       return 0;
     }
 
     errno = EAGAIN;
     return -1;
-#else
-    struct timespec deadline = {0, 0};
-    clock_gettime(CLOCK_REALTIME, &deadline);
-
-    deadline.tv_sec += timeoutMs / 1000;
-    deadline.tv_nsec += static_cast<long>(timeoutMs % 1000) * 1000000L;
-    if (deadline.tv_nsec >= 1000000000L)
-    {
-      deadline.tv_sec += deadline.tv_nsec / 1000000000L;
-      deadline.tv_nsec %= 1000000000L;
-    }
-
-    const int waitResult = sem_timedwait(psem, &deadline);
-    if ((-1 == waitResult) && (ETIMEDOUT == errno))
-    {
-      errno = EAGAIN; // normalize timeout errno with the macOS wrapper
-    }
-    return waitResult;
-#endif
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // semaphoreInit
-  //
-  // Called to initialize a semaphore. Returns 0 on success, -1 on failure.
-  //
-
-  int semaphoreInit(vscp_sem_t *psem, unsigned int initialValue)
-  {
-#ifdef __APPLE__
-    *psem = dispatch_semaphore_create(static_cast<long>(initialValue));
-    return (NULL != *psem) ? 0 : -1;
-#else
-    return sem_init(psem, 0, initialValue);
-#endif
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // semaphorePost
-  //
-  // Called to post (signal) a semaphore. Returns 0 on success, -1 on failure.
-  //
-
-  int semaphorePost(vscp_sem_t *psem)
-  {
-#ifdef __APPLE__
-    dispatch_semaphore_signal(*psem);
+  const dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, static_cast<int64_t>(timeoutMs) * 1000000LL);
+  const long waitResult         = dispatch_semaphore_wait(*psem, timeout);
+  if (0 == waitResult) {
     return 0;
-#else
-    return sem_post(psem);
-#endif
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // semaphoreDestroy
-  //
-  // Called to destroy a semaphore. Returns 0 on success, -1 on failure.
-  //
+  errno = EAGAIN;
+  return -1;
+#else
+  struct timespec deadline = { 0, 0 };
+  clock_gettime(CLOCK_REALTIME, &deadline);
 
-  int semaphoreDestroy(vscp_sem_t *psem)
-  {
+  deadline.tv_sec += timeoutMs / 1000;
+  deadline.tv_nsec += static_cast<long>(timeoutMs % 1000) * 1000000L;
+  if (deadline.tv_nsec >= 1000000000L) {
+    deadline.tv_sec += deadline.tv_nsec / 1000000000L;
+    deadline.tv_nsec %= 1000000000L;
+  }
+
+  const int waitResult = sem_timedwait(psem, &deadline);
+  if ((-1 == waitResult) && (ETIMEDOUT == errno)) {
+    errno = EAGAIN; // normalize timeout errno with the macOS wrapper
+  }
+  return waitResult;
+#endif
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// semaphoreInit
+//
+// Called to initialize a semaphore. Returns 0 on success, -1 on failure.
+//
+
+int
+semaphoreInit(vscp_sem_t *psem, unsigned int initialValue)
+{
+#ifdef __APPLE__
+  *psem = dispatch_semaphore_create(static_cast<long>(initialValue));
+  return (NULL != *psem) ? 0 : -1;
+#else
+  return sem_init(psem, 0, initialValue);
+#endif
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// semaphorePost
+//
+// Called to post (signal) a semaphore. Returns 0 on success, -1 on failure.
+//
+
+int
+semaphorePost(vscp_sem_t *psem)
+{
+#ifdef __APPLE__
+  dispatch_semaphore_signal(*psem);
+  return 0;
+#else
+  return sem_post(psem);
+#endif
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// semaphoreDestroy
+//
+// Called to destroy a semaphore. Returns 0 on success, -1 on failure.
+//
+
+int
+semaphoreDestroy(vscp_sem_t *psem)
+{
 #ifdef __APPLE__
 #if !OS_OBJECT_USE_OBJC
-    if (NULL != *psem)
-    {
-      dispatch_release(*psem);
-    }
-#endif
-    *psem = NULL;
-    return 0;
-#else
-    return sem_destroy(psem);
-#endif
+  if (NULL != *psem) {
+    dispatch_release(*psem);
   }
+#endif
+  *psem = NULL;
+  return 0;
+#else
+  return sem_destroy(psem);
+#endif
+}
 #endif
 
 } // namespace
 
 // Prototypes
 #ifdef WIN32
-void workThreadTransmit(void *pObject);
-void workThreadReceive(void *pObject);
+void
+workThreadTransmit(void *pObject);
+void
+workThreadReceive(void *pObject);
 #else
-void *workThreadTransmit(void *pObject);
-void *workThreadReceive(void *pObject);
+void *
+workThreadTransmit(void *pObject);
+void *
+workThreadReceive(void *pObject);
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -506,10 +487,11 @@ void *workThreadReceive(void *pObject);
 //
 //
 
-static uint32_t getClockMilliSeconds()
+static uint32_t
+getClockMilliSeconds()
 {
 #ifdef WIN32
-  return (uint32_t)((1000 * (float)clock()) / CLOCKS_PER_SEC);
+  return (uint32_t) ((1000 * (float) clock()) / CLOCKS_PER_SEC);
 #else
   timeval curTime;
   gettimeofday(&curTime, NULL);
@@ -522,10 +504,11 @@ static uint32_t getClockMilliSeconds()
 //
 //
 
-static uint32_t getClockMicroSeconds()
+static uint32_t
+getClockMicroSeconds()
 {
 #ifdef WIN32
-  return (uint32_t)((1000000 * (float)clock()) / CLOCKS_PER_SEC);
+  return (uint32_t) ((1000000 * (float) clock()) / CLOCKS_PER_SEC);
 #else
   timeval curTime;
   gettimeofday(&curTime, NULL);
@@ -547,21 +530,21 @@ CCan4VSCPObj::CCan4VSCPObj()
 
   // No filter mask
   m_filter = 0;
-  m_mask = 0;
+  m_mask   = 0;
 
   m_nBaud = SET_BAUDRATE_115200;
 
   // Default capabilities of connected device
-  m_caps.maxVscpFrames = 1;  // We expect: One VSCP frame handled.
+  m_caps.maxVscpFrames  = 1; // We expect: One VSCP frame handled.
   m_caps.maxCanalFrames = 1; // We expect: One CANAL frame handled.
 
-  m_bRun = false;
-  m_bOpen = false;
-  m_bDebug = false;
-  m_bStrict = false;
+  m_bRun      = false;
+  m_bOpen     = false;
+  m_bDebug    = false;
+  m_bStrict   = false;
   m_bUdpDebug = false;
 
-  m_RxMsgState = INCOMING_STATE_NONE;
+  m_RxMsgState    = INCOMING_STATE_NONE;
   m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
 
   m_sequencyno = 0; // No frames sent yet
@@ -572,7 +555,7 @@ CCan4VSCPObj::CCan4VSCPObj()
 
 #ifdef WIN32
 
-  m_hTreadReceive = 0;
+  m_hTreadReceive  = 0;
   m_hTreadTransmit = 0;
 
   m_receiveDataEvent = NULL;
@@ -585,12 +568,12 @@ CCan4VSCPObj::CCan4VSCPObj()
   // Create the device AND LIST access mutexes
   // (unnamed = process local, not initially owned)
   m_can4vscpMutex = CreateMutex(NULL, FALSE, NULL);
-  m_receiveMutex = CreateMutex(NULL, FALSE, NULL);
+  m_receiveMutex  = CreateMutex(NULL, FALSE, NULL);
   m_transmitMutex = CreateMutex(NULL, FALSE, NULL);
   m_responseMutex = CreateMutex(NULL, FALSE, NULL);
 
   // Events
-  m_receiveDataEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+  m_receiveDataEvent     = CreateEvent(NULL, TRUE, FALSE, NULL);
   m_transmitDataPutEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
   m_transmitDataGetEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
   m_transmitAckNackEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -623,8 +606,7 @@ CCan4VSCPObj::CCan4VSCPObj()
 
 CCan4VSCPObj::~CCan4VSCPObj()
 {
-  if (m_bRun)
-  {
+  if (m_bRun) {
     close();
   }
 
@@ -759,7 +741,8 @@ CCan4VSCPObj::~CCan4VSCPObj()
 //  0  - No debug logging
 //  1  - Debug logging (spdlog debug)
 
-int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
+int
+CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 {
 #ifdef WIN32
   int nComPort = 1; // COM1 is default
@@ -768,7 +751,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   DWORD baud = 115200;
 #else
   char szDrvParams[PATH_MAX];
-  char *pDeviceName = (char *)"/dev/ttyUSB0";
+  char *pDeviceName = (char *) "/dev/ttyUSB0";
   char szBaud[PATH_MAX];
 
   strcpy(szBaud, "115200");
@@ -781,64 +764,55 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   m_initFlag = flags;
 
   // Enable strict mode if asked to
-  if (flags & CAN4VSCP_FLAG_ENABLE_STRICT)
-  {
+  if (flags & CAN4VSCP_FLAG_ENABLE_STRICT) {
     m_bStrict = true;
   }
 
   // Enable debug messges if asked to
-  if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG)
-  {
+  if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Debug mode enabled.");
     m_bDebug = true;
   }
 
-  m_RxMsgState = INCOMING_STATE_NONE;
+  m_RxMsgState    = INCOMING_STATE_NONE;
   m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
 
   // Save configuration string and convert to upper case
 #ifdef WIN32
-  if (NULL != pConfig)
-  {
+  if (NULL != pConfig) {
     strncpy(szDrvParams, pConfig, MAX_PATH);
   }
-  else
-  {
+  else {
     strncpy(szDrvParams, "COM1", MAX_PATH); // Use default port
   }
   strupr(szDrvParams);
 #else
-  if (NULL != pConfig)
-  {
+  if (NULL != pConfig) {
     strncpy(szDrvParams, pConfig, PATH_MAX);
   }
-  else
-  {
+  else {
     strncpy(szDrvParams, "/dev/ttyUSB0", PATH_MAX); // Use default port
   }
   // Make upper case
   p = szDrvParams;
 #endif
 
-  if (m_bDebug)
-  {
-    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open driver %s 0x%lX", pConfig,
-              flags);
+  if (m_bDebug) {
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open driver %s 0x%lX", pConfig, flags);
   }
 
   // Initiate statistics
-  m_stat.cntReceiveData = 0;
-  m_stat.cntReceiveFrames = 0;
-  m_stat.cntTransmitData = 0;
+  m_stat.cntReceiveData    = 0;
+  m_stat.cntReceiveFrames  = 0;
+  m_stat.cntTransmitData   = 0;
   m_stat.cntTransmitFrames = 0;
 
-  m_stat.cntBusOff = 0;
+  m_stat.cntBusOff      = 0;
   m_stat.cntBusWarnings = 0;
-  m_stat.cntOverruns = 0;
+  m_stat.cntOverruns    = 0;
 
   // if open we have noting to do
-  if (m_bRun)
-  {
+  if (m_bRun) {
     return CANAL_ERROR_SUCCESS;
   }
 
@@ -855,12 +829,10 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   nComPort = 1; // Default com port
 #endif
   char *pCursor = szDrvParams;
-  p = nextConfigToken(&pCursor);
-  if ((NULL != p) && *p)
-  {
+  p             = nextConfigToken(&pCursor);
+  if ((NULL != p) && *p) {
 #ifdef WIN32
-    if (NULL != (p = strstr(p, "COM")))
-    {
+    if (NULL != (p = strstr(p, "COM"))) {
       nComPort = atoi(p + 3);
     }
 #else
@@ -869,31 +841,26 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   }
 
   p = nextConfigToken(&pCursor);
-  if ((NULL != p) && *p)
-  {
+  if ((NULL != p) && *p) {
     m_nBaud = atoi(p);
     // Check if a valid code
-    if (m_nBaud > (SET_BAUDRATE_MAX - 1))
-    {
+    if (m_nBaud > (SET_BAUDRATE_MAX - 1)) {
       m_nBaud = SET_BAUDRATE_115200;
     }
   }
 
   // Optional UDP debug target "udphost[:udpport]"
-  char udpHost[256] = {0};
+  char udpHost[256]      = { 0 };
   unsigned short udpPort = CAN4VSCP_UDP_DEBUG_DEFAULT_PORT;
-  p = nextConfigToken(&pCursor);
-  if ((NULL != p) && *p)
-  {
+  p                      = nextConfigToken(&pCursor);
+  if ((NULL != p) && *p) {
     strncpy(udpHost, p, sizeof(udpHost) - 1);
     char *pColon = strrchr(udpHost, ':');
-    if (NULL != pColon)
-    {
-      *pColon = 0;
+    if (NULL != pColon) {
+      *pColon           = 0;
       const int portval = atoi(pColon + 1);
-      if ((portval > 0) && (portval < 65536))
-      {
-        udpPort = (unsigned short)portval;
+      if ((portval > 0) && (portval < 65536)) {
+        udpPort = (unsigned short) portval;
       }
     }
   }
@@ -902,8 +869,7 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   p = nextConfigToken(&pCursor);
 #ifndef WIN32
   gSyslogLevel = parseLogLevel(p);
-  if (m_bDebug)
-  {
+  if (m_bDebug) {
     driverLog(spdlog::level::debug,
               "[vscpl1drv-can4vscp] Syslog level set to '%s'",
               spdlog::level::to_string_view(gSyslogLevel).data());
@@ -911,188 +877,182 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 #endif
 
   // Enable UDP debug if a target is configured or flag bit 30 is set
-  if (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG)
-  {
+  if (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG) {
 
     // If no host is set, set default host and port
-    if (!udpHost[0])
-    {
+    if (!udpHost[0]) {
       strcpy(udpHost, "127.0.0.1");
       udpPort = 9999;
     }
 
     // Open the UDP debug sink
-    if (gUdpDebugSink.open(udpHost, udpPort))
-    {
+    if (gUdpDebugSink.open(udpHost, udpPort)) {
       m_bUdpDebug = true;
-      m_bDebug = true; // UDP debug implies debug logging
+      m_bDebug    = true; // UDP debug implies debug logging
       driverLog(spdlog::level::info,
                 "[vscpl1drv-can4vscp] UDP debug enabled, target %s:%u",
-                udpHost, (unsigned)udpPort);
+                udpHost,
+                (unsigned) udpPort);
     }
-    else
-    {
+    else {
       driverLog(spdlog::level::err,
                 "[vscpl1drv-can4vscp] Failed to enable UDP debug (target %s:%u)",
-                udpHost, (unsigned)udpPort);
+                udpHost,
+                (unsigned) udpPort);
     }
   }
 
 #ifdef WIN32
-  switch (m_nBaud)
-  {
+  switch (m_nBaud) {
 
-  case SET_BAUDRATE_128000:
-    baud = 128000;
-    break;
+    case SET_BAUDRATE_128000:
+      baud = 128000;
+      break;
 
-  case SET_BAUDRATE_230400:
-    baud = 230400;
-    break;
+    case SET_BAUDRATE_230400:
+      baud = 230400;
+      break;
 
-  case SET_BAUDRATE_256000:
-    baud = 256000;
-    break;
+    case SET_BAUDRATE_256000:
+      baud = 256000;
+      break;
 
-  case SET_BAUDRATE_460800:
-    baud = 460800;
-    break;
+    case SET_BAUDRATE_460800:
+      baud = 460800;
+      break;
 
-  case SET_BAUDRATE_500000:
-    baud = 500000;
-    break;
+    case SET_BAUDRATE_500000:
+      baud = 500000;
+      break;
 
-  case SET_BAUDRATE_625000:
-    baud = 625000;
-    break;
+    case SET_BAUDRATE_625000:
+      baud = 625000;
+      break;
 
-  case SET_BAUDRATE_921600:
-    baud = 921600;
-    break;
+    case SET_BAUDRATE_921600:
+      baud = 921600;
+      break;
 
-  case SET_BAUDRATE_1000000:
-    baud = 1000000;
-    break;
+    case SET_BAUDRATE_1000000:
+      baud = 1000000;
+      break;
 
-  case SET_BAUDRATE_9600:
-    baud = 9600;
-    break;
+    case SET_BAUDRATE_9600:
+      baud = 9600;
+      break;
 
-  case SET_BAUDRATE_19200:
-    baud = 19200;
-    break;
+    case SET_BAUDRATE_19200:
+      baud = 19200;
+      break;
 
-  case SET_BAUDRATE_38400:
-    baud = 38400;
-    break;
+    case SET_BAUDRATE_38400:
+      baud = 38400;
+      break;
 
-  case SET_BAUDRATE_57600:
-    baud = 57600;
-    break;
+    case SET_BAUDRATE_57600:
+      baud = 57600;
+      break;
 
-  case SET_BAUDRATE_115200:
-  default:
-    baud = 115200;
-    break;
+    case SET_BAUDRATE_115200:
+    default:
+      baud = 115200;
+      break;
   }
 #else
-  switch (m_nBaud)
-  {
+  switch (m_nBaud) {
 
-  case SET_BAUDRATE_128000:
-    strcpy(szBaud, "128000");
-    break;
+    case SET_BAUDRATE_128000:
+      strcpy(szBaud, "128000");
+      break;
 
-  case SET_BAUDRATE_230400:
-    strcpy(szBaud, "230400");
-    break;
+    case SET_BAUDRATE_230400:
+      strcpy(szBaud, "230400");
+      break;
 
-  case SET_BAUDRATE_256000:
-    strcpy(szBaud, "256000");
-    break;
+    case SET_BAUDRATE_256000:
+      strcpy(szBaud, "256000");
+      break;
 
-  case SET_BAUDRATE_460800:
-    strcpy(szBaud, "460800");
-    break;
+    case SET_BAUDRATE_460800:
+      strcpy(szBaud, "460800");
+      break;
 
-  case SET_BAUDRATE_500000:
-    strcpy(szBaud, "500000");
-    break;
+    case SET_BAUDRATE_500000:
+      strcpy(szBaud, "500000");
+      break;
 
-  case SET_BAUDRATE_625000:
-    strcpy(szBaud, "625000");
-    break;
+    case SET_BAUDRATE_625000:
+      strcpy(szBaud, "625000");
+      break;
 
-  case SET_BAUDRATE_921600:
-    strcpy(szBaud, "921600");
-    break;
+    case SET_BAUDRATE_921600:
+      strcpy(szBaud, "921600");
+      break;
 
-  case SET_BAUDRATE_1000000:
-    strcpy(szBaud, "1000000");
-    break;
+    case SET_BAUDRATE_1000000:
+      strcpy(szBaud, "1000000");
+      break;
 
-  case SET_BAUDRATE_9600:
-    strcpy(szBaud, "9600");
-    break;
+    case SET_BAUDRATE_9600:
+      strcpy(szBaud, "9600");
+      break;
 
-  case SET_BAUDRATE_19200:
-    strcpy(szBaud, "19200");
-    break;
+    case SET_BAUDRATE_19200:
+      strcpy(szBaud, "19200");
+      break;
 
-  case SET_BAUDRATE_38400:
-    strcpy(szBaud, "38400");
-    break;
+    case SET_BAUDRATE_38400:
+      strcpy(szBaud, "38400");
+      break;
 
-  case SET_BAUDRATE_57600:
-    strcpy(szBaud, "57600");
-    break;
+    case SET_BAUDRATE_57600:
+      strcpy(szBaud, "57600");
+      break;
 
-  case SET_BAUDRATE_115200:
-  default:
-    strcpy(szBaud, "115200");
-    break;
+    case SET_BAUDRATE_115200:
+    default:
+      strcpy(szBaud, "115200");
+      break;
   }
 #endif
 
-  // Open the com port
+    // Open the com port
 #ifdef WIN32
-  if (!m_com.init(nComPort, CBR_115200, 8, NOPARITY, ONESTOPBIT,
-                  (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE)
-                      ? HANDSHAKE_HARDWARE
-                      : HANDSHAKE_NONE))
-  {
+  if (!m_com.init(nComPort,
+                  CBR_115200,
+                  8,
+                  NOPARITY,
+                  ONESTOPBIT,
+                  (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE) ? HANDSHAKE_HARDWARE : HANDSHAKE_NONE)) {
     return CANAL_ERROR_INIT_FAIL;
   }
 #else
 
   // if open we have noting to do
-  if (0 != m_com.getFD())
-  {
-    driverLog(spdlog::level::err,
-              "[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
+  if (0 != m_com.getFD()) {
+    driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
     return 0;
   }
 
   //----------------------------------------------------------------------
   // Open Serial Port
   //----------------------------------------------------------------------
-  if (!m_com.open(pDeviceName))
-  {
+  if (!m_com.open(pDeviceName)) {
     driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Open [%s] failed\n", pDeviceName);
     return CANAL_ERROR_INIT_FAIL;
   }
 
-  if (m_bDebug)
-  {
-    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open of port [%s] successful\n",
-              pDeviceName);
+  if (m_bDebug) {
+    driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open of port [%s] successful\n", pDeviceName);
   }
 
   //----------------------------------------------------------------------
   // Com::setParam( char *baud, char *parity, char *bits, int HWFlow, int SWFlow
   // )
   //----------------------------------------------------------------------
-  m_com.setParam((char *)"115200", (char *)"N", (char *)"8",
+  m_com.setParam((char *) "115200",
+                 (char *) "N",
+                 (char *) "8",
                  (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE) ? 1 : 0,
                  0);
 
@@ -1103,31 +1063,30 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   // m_cntRcv = 0;
 
   // Initiate statistics
-  m_stat.cntReceiveData = 0;
-  m_stat.cntReceiveFrames = 0;
-  m_stat.cntTransmitData = 0;
+  m_stat.cntReceiveData    = 0;
+  m_stat.cntReceiveFrames  = 0;
+  m_stat.cntTransmitData   = 0;
   m_stat.cntTransmitFrames = 0;
 
-  m_stat.cntBusOff = 0;
+  m_stat.cntBusOff      = 0;
   m_stat.cntBusWarnings = 0;
-  m_stat.cntOverruns = 0;
+  m_stat.cntOverruns    = 0;
 
 #endif
 
   // Set CAN4VSCP mode in case of device in verbose mode
-  if (!(m_initFlag & CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE))
-  {
+  if (!(m_initFlag & CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE)) {
 #ifdef WIN32
-    BOOL rw = m_com.writebuf((unsigned char *)"SET MODE VSCP\r\n",
+    BOOL rw = m_com.writebuf((unsigned char *) "SET MODE VSCP\r\n",
                              15); // In case of garbage in queue
     SLEEP(200);
-    rw = m_com.writebuf((unsigned char *)"SET MODE VSCP\r\n",
+    rw = m_com.writebuf((unsigned char *) "SET MODE VSCP\r\n",
                         15); // we set CAN4VSCP mode twice
 #else
 
-    m_com.comm_puts((char *)"\r", 1, true);
-    m_com.comm_puts((char *)"\r\n", 1, true);
-    m_com.comm_puts((char *)"set mode vscp\r\n", 15,
+    m_com.comm_puts((char *) "\r", 1, true);
+    m_com.comm_puts((char *) "\r\n", 1, true);
+    m_com.comm_puts((char *) "set mode vscp\r\n", 15,
                     true); // In case of garbage in queue
     SLEEP(100);
     {
@@ -1135,19 +1094,15 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       char c;
       std::string str;
       // read() returns 0 on EOF so loop only while data is delivered
-      while (cnt > 0)
-      {
+      while (cnt > 0) {
         c = m_com.readChar(&cnt);
-        if (cnt > 0)
-        {
+        if (cnt > 0) {
           str += c;
         }
       }
 
-      if (m_bDebug)
-      {
-        driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] SET MODE VSCP response [%s]",
-                  str.c_str());
+      if (m_bDebug) {
+        driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] SET MODE VSCP response [%s]", str.c_str());
       }
     }
 
@@ -1165,20 +1120,16 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 
   // Start write thread
   DWORD threadId;
-  if (NULL == (m_hTreadTransmit = CreateThread(
-                   NULL, 0, (LPTHREAD_START_ROUTINE)workThreadTransmit, this, 0,
-                   &threadId)))
-  {
+  if (NULL ==
+      (m_hTreadTransmit = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) workThreadTransmit, this, 0, &threadId))) {
     // Failure
     close();
     return CANAL_ERROR_INIT_FAIL;
   }
 
   // Start read thread
-  if (NULL == (m_hTreadReceive = CreateThread(
-                   NULL, 0, (LPTHREAD_START_ROUTINE)workThreadReceive, this, 0,
-                   &threadId)))
-  {
+  if (NULL ==
+      (m_hTreadReceive = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) workThreadReceive, this, 0, &threadId))) {
     // Failure
     close();
     return CANAL_ERROR_INIT_FAIL;
@@ -1194,27 +1145,21 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   pthread_mutex_init(&m_can4vscpObjMutex, NULL);
 
   // Create the log transmit thread.
-  if (pthread_create(&m_threadIdTransmit, &thread_attr, workThreadTransmit, this))
-  {
+  if (pthread_create(&m_threadIdTransmit, &thread_attr, workThreadTransmit, this)) {
 
-    driverLog(spdlog::level::err,
-              "[vscpl1drv-can4vscp] Unable to create can4vscpdrv write thread.");
+    driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Unable to create can4vscpdrv write thread.");
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-    if (NULL != m_flog)
-    {
+    if (NULL != m_flog) {
       fclose(m_flog);
       m_flog = NULL;
     }
 #endif
   }
   // Create the receive thread.
-  if (pthread_create(&m_threadIdReceive, &thread_attr, workThreadReceive, this))
-  {
-    driverLog(spdlog::level::err,
-              "[vscpl1drv-can4vscp] Unable to create can4vscpdrv receive thread.");
+  if (pthread_create(&m_threadIdReceive, &thread_attr, workThreadReceive, this)) {
+    driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Unable to create can4vscpdrv receive thread.");
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-    if (NULL != m_flog)
-    {
+    if (NULL != m_flog) {
       fclose(m_flog);
       m_flog = NULL;
     }
@@ -1226,13 +1171,10 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 
 #endif
 
-  for (int i = 0; i < 3; i++)
-  {
+  for (int i = 0; i < 3; i++) {
 
     // saveseq = m_sequencyno;    // Save the sequence ordinal
-    if (sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_NOOP, NULL, 0, &Msg,
-                        500))
-    {
+    if (sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_NOOP, NULL, 0, &Msg, 500)) {
 
       bFound = true;
       break;
@@ -1242,22 +1184,17 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   }
 
   // Give up if not found
-  if (!bFound)
-  {
+  if (!bFound) {
     // Failure
     driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] NOOP initial command test failed.");
-    if (m_bStrict)
-    {
+    if (m_bStrict) {
       close();
       return CANAL_ERROR_INIT_FAIL;
     }
   }
-  else
-  {
-    if (m_bDebug)
-    {
-      driverLog(spdlog::level::debug,
-                "[vscpl1drv-can4vscp] NOOP initial command test success.");
+  else {
+    if (m_bDebug) {
+      driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] NOOP initial command test success.");
     }
   }
 
@@ -1268,132 +1205,100 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   getDeviceCapabilities();
 
   // If timestamp needs to be enabled we enabled it here
-  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_TIMESTAMP)
-  {
+  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_TIMESTAMP) {
 
     uint8_t conf = 1;
-    if (!sendConfigWait(VSCP_DRIVER_CONFIG_TIMESTAMP, &conf, 1, &Msg, 500))
-    {
+    if (!sendConfigWait(VSCP_DRIVER_CONFIG_TIMESTAMP, &conf, 1, &Msg, 500)) {
       // Failure
       driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Enable of timestamp failed.");
-      if (m_bStrict)
-      {
+      if (m_bStrict) {
         close();
         return CANAL_ERROR_INIT_FAIL;
       }
     }
-    else
-    {
-      if (m_bDebug)
-      {
+    else {
+      if (m_bDebug) {
         driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Enable of timestamp success.");
       }
     }
   }
 
   // If non standard baudrate we change it here
-  if (SET_BAUDRATE_115200 != m_nBaud)
-  {
+  if (SET_BAUDRATE_115200 != m_nBaud) {
 
     uint8_t conf = m_nBaud;
-    if (!sendConfigWait(VSCP_DRIVER_CONFIG_BAUDRATE, &conf, 1, &Msg, 500))
-    {
+    if (!sendConfigWait(VSCP_DRIVER_CONFIG_BAUDRATE, &conf, 1, &Msg, 500)) {
       // Failure
       driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Config of CAN bitrate failed.");
-      if (m_bStrict)
-      {
+      if (m_bStrict) {
         close();
         return CANAL_ERROR_INIT_FAIL;
       }
     }
-    else
-    {
-      if (m_bDebug)
-      {
+    else {
+      if (m_bDebug) {
         driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Config of CAN bitrate success.");
       }
     }
   }
 
   // Wait for ACK
-  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK)
-  {
-  }
+  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) {}
 
   // Set interface in requested mode.
-  switch (m_initFlag & 0x03)
-  {
+  switch (m_initFlag & 0x03) {
 
-  case 1:
-    if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LISTEN, NULL, 0, &Msg,
-                         1000))
-    {
-      // Failure
-      driverLog(spdlog::level::err,
-                "[vscpl1drv-can4vscp] Failed to open device in listen mode");
-      if (m_bStrict)
-      {
-        close();
-        return CANAL_ERROR_INIT_FAIL;
+    case 1:
+      if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LISTEN, NULL, 0, &Msg, 1000)) {
+        // Failure
+        driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Failed to open device in listen mode");
+        if (m_bStrict) {
+          close();
+          return CANAL_ERROR_INIT_FAIL;
+        }
       }
-    }
-    else
-    {
-      if (m_bDebug)
-      {
-        driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Open listen mode success.");
+      else {
+        if (m_bDebug) {
+          driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Open listen mode success.");
+        }
       }
-    }
-    break;
+      break;
 
-  case 2:
-    if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LOOPBACK, NULL, 0, &Msg,
-                         1000))
-    {
-      // Failure
-      driverLog(spdlog::level::err,
-                "[vscpl1drv-can4vscp] Failed to open device in loopback mode.");
-      if (m_bStrict)
-      {
-        close();
-        return CANAL_ERROR_INIT_FAIL;
+    case 2:
+      if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LOOPBACK, NULL, 0, &Msg, 1000)) {
+        // Failure
+        driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Failed to open device in loopback mode.");
+        if (m_bStrict) {
+          close();
+          return CANAL_ERROR_INIT_FAIL;
+        }
       }
-    }
-    else
-    {
-      if (m_bDebug)
-      {
-        driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Open loopback mode success.");
+      else {
+        if (m_bDebug) {
+          driverLog(spdlog::level::debug, "vscpl1drv-can4vscp] Open loopback mode success.");
+        }
       }
-    }
-    break;
+      break;
 
-  case 0:
-  default:
-    if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_OPEN, NULL, 0, &Msg,
-                         1000))
-    {
-      // Failure
-      driverLog(spdlog::level::err,
-                "[vscpl1drv-can4vscp] Failed to open device in standard mode.");
-      if (m_bStrict)
-      {
-        close();
-        return CANAL_ERROR_INIT_FAIL;
+    case 0:
+    default:
+      if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_OPEN, NULL, 0, &Msg, 1000)) {
+        // Failure
+        driverLog(spdlog::level::err, "[vscpl1drv-can4vscp] Failed to open device in standard mode.");
+        if (m_bStrict) {
+          close();
+          return CANAL_ERROR_INIT_FAIL;
+        }
       }
-    }
-    else
-    {
-      if (m_bDebug)
-      {
-        driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open standard mode success.");
+      else {
+        if (m_bDebug) {
+          driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open standard mode success.");
+        }
       }
-    }
-    break;
+      break;
   }
 
-  if (m_bDebug)
-  {
+  if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Open success");
   }
 
@@ -1404,29 +1309,27 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 // close
 //
 
-int CCan4VSCPObj::close(void)
+int
+CCan4VSCPObj::close(void)
 {
   cmdResponseMsg Msg;
 
-  if (m_bDebug)
-  {
+  if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver");
   }
 
   // Do nothing if already terminated
-  if (!m_bRun)
-  {
+  if (!m_bRun) {
     return CANAL_ERROR_SUCCESS;
   }
 
   sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_CLOSE, NULL, 0, &Msg, 1000);
 
-  m_bRun = false;
+  m_bRun  = false;
   m_bOpen = false;
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-  if (NULL != m_flog)
-  {
+  if (NULL != m_flog) {
     fclose(m_flog);
     m_flog = NULL;
   }
@@ -1443,8 +1346,7 @@ int CCan4VSCPObj::close(void)
   semaphorePost(&m_transmitDataPutSem);
   semaphorePost(&m_transmitDataGetSem);
   semaphorePost(&m_transmitAckNackSem);
-  if (m_bDebug)
-  {
+  if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
   }
 #endif
@@ -1455,8 +1357,7 @@ int CCan4VSCPObj::close(void)
   DWORD rv;
 
   // Wait for transmit thread to terminate
-  while (true)
-  {
+  while (true) {
     GetExitCodeThread(m_hTreadTransmit, &rv);
     if (STILL_ACTIVE != rv)
       break;
@@ -1464,8 +1365,7 @@ int CCan4VSCPObj::close(void)
   }
 
   // Wait for receive thread to terminate
-  while (true)
-  {
+  while (true) {
     GetExitCodeThread(m_hTreadReceive, &rv);
     if (STILL_ACTIVE != rv)
       break;
@@ -1474,18 +1374,15 @@ int CCan4VSCPObj::close(void)
 #else
   pthread_join(m_threadIdReceive, NULL);
   pthread_join(m_threadIdTransmit, NULL);
-  if (m_bDebug)
-  {
+  if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: Threads joined.");
   }
 #endif
 
   // Close the com port if its open
-  if (m_com.isOpen())
-  {
+  if (m_com.isOpen()) {
     m_com.close();
-    if (m_bDebug)
-    {
+    if (m_bDebug) {
       driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Closing driver: channel closed.");
     }
   }
@@ -1493,14 +1390,12 @@ int CCan4VSCPObj::close(void)
   // Mutexes/semaphores are destroyed in the destructor so the
   // channel can be reopened after close
 
-  if (m_bDebug)
-  {
+  if (m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] Driver close success");
   }
 
   // Shut down UDP debug output
-  if (m_bUdpDebug)
-  {
+  if (m_bUdpDebug) {
     gUdpDebugSink.close();
     m_bUdpDebug = false;
   }
@@ -1512,17 +1407,16 @@ int CCan4VSCPObj::close(void)
 // softOpen
 //
 
-int CCan4VSCPObj::softOpen()
+int
+CCan4VSCPObj::softOpen()
 {
   cmdResponseMsg Msg;
 
   // If timestamp needs to be enabled we enabled it here
-  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_TIMESTAMP)
-  {
+  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_TIMESTAMP) {
 
     uint8_t conf = 1;
-    if (!sendConfigWait(VSCP_DRIVER_CONFIG_TIMESTAMP, &conf, 1, &Msg, 500))
-    {
+    if (!sendConfigWait(VSCP_DRIVER_CONFIG_TIMESTAMP, &conf, 1, &Msg, 500)) {
       // Failure
       // We don't close the serial channel but
       // instead try again later
@@ -1531,12 +1425,10 @@ int CCan4VSCPObj::softOpen()
   }
 
   // If non standard baudrate we change it here
-  if (SET_BAUDRATE_115200 != m_nBaud)
-  {
+  if (SET_BAUDRATE_115200 != m_nBaud) {
 
     uint8_t conf = m_nBaud;
-    if (!sendConfigWait(VSCP_DRIVER_CONFIG_BAUDRATE, &conf, 1, &Msg, 500))
-    {
+    if (!sendConfigWait(VSCP_DRIVER_CONFIG_BAUDRATE, &conf, 1, &Msg, 500)) {
       // Failure
       // We don't close the serial channel but
       // instead try again later
@@ -1545,47 +1437,38 @@ int CCan4VSCPObj::softOpen()
   }
 
   // Wait for ACK
-  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK)
-  {
-  }
+  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) {}
 
   // Set interface in requested mode.
-  switch (m_initFlag & 0x03)
-  {
+  switch (m_initFlag & 0x03) {
 
-  case 1:
-    if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LISTEN, NULL, 0, &Msg,
-                         1000))
-    {
-      // Failure
-      // We don't close the serial channel but
-      // instead try again later
-      return CANAL_ERROR_INIT_FAIL;
-    }
-    break;
+    case 1:
+      if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LISTEN, NULL, 0, &Msg, 1000)) {
+        // Failure
+        // We don't close the serial channel but
+        // instead try again later
+        return CANAL_ERROR_INIT_FAIL;
+      }
+      break;
 
-  case 2:
-    if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LOOPBACK, NULL, 0, &Msg,
-                         1000))
-    {
-      // Failure
-      // We don't close the serial channel but
-      // instead try again later
-      return CANAL_ERROR_INIT_FAIL;
-    }
-    break;
+    case 2:
+      if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LOOPBACK, NULL, 0, &Msg, 1000)) {
+        // Failure
+        // We don't close the serial channel but
+        // instead try again later
+        return CANAL_ERROR_INIT_FAIL;
+      }
+      break;
 
-  case 0:
-  default:
-    if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_OPEN, NULL, 0, &Msg,
-                         1000))
-    {
-      // Failure
-      // We don't close the serial channel but
-      // instead try again later
-      return CANAL_ERROR_INIT_FAIL;
-    }
-    break;
+    case 0:
+    default:
+      if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_OPEN, NULL, 0, &Msg, 1000)) {
+        // Failure
+        // We don't close the serial channel but
+        // instead try again later
+        return CANAL_ERROR_INIT_FAIL;
+      }
+      break;
   }
 
   return CANAL_ERROR_SUCCESS;
@@ -1595,27 +1478,25 @@ int CCan4VSCPObj::softOpen()
 // doFilter
 //
 
-bool CCan4VSCPObj::doFilter(canalMsg *pcanalMsg)
+bool
+CCan4VSCPObj::doFilter(canalMsg *pcanalMsg)
 {
   unsigned long msgid = (pcanalMsg->id & 0x1fffffff);
   if (!m_mask)
     return true; // fast escape
 
   // Set bit 32 if extended message
-  if (pcanalMsg->flags | CANAL_IDFLAG_EXTENDED)
-  {
+  if (pcanalMsg->flags | CANAL_IDFLAG_EXTENDED) {
     msgid &= 0x1fffffff;
     msgid |= 80000000;
   }
-  else
-  {
+  else {
     // Standard message
     msgid &= 0x000007ff;
   }
 
   // Set bit 31 if RTR
-  if (pcanalMsg->flags | CANAL_IDFLAG_RTR)
-  {
+  if (pcanalMsg->flags | CANAL_IDFLAG_RTR) {
     msgid |= 40000000;
   }
 
@@ -1626,7 +1507,8 @@ bool CCan4VSCPObj::doFilter(canalMsg *pcanalMsg)
 // setFilter
 //
 
-int CCan4VSCPObj::setFilter(unsigned long filter)
+int
+CCan4VSCPObj::setFilter(unsigned long filter)
 {
   m_filter = filter;
   return CANAL_ERROR_SUCCESS;
@@ -1636,7 +1518,8 @@ int CCan4VSCPObj::setFilter(unsigned long filter)
 // setMask
 //
 
-int CCan4VSCPObj::setMask(unsigned long mask)
+int
+CCan4VSCPObj::setMask(unsigned long mask)
 {
   m_mask = mask;
   return CANAL_ERROR_SUCCESS;
@@ -1646,47 +1529,43 @@ int CCan4VSCPObj::setMask(unsigned long mask)
 // writeMsg
 //
 
-int CCan4VSCPObj::writeMsg(canalMsg *pMsg)
+int
+CCan4VSCPObj::writeMsg(canalMsg *pMsg)
 {
   int rv = CANAL_ERROR_SUCCESS;
 
   // Must be a message pointer
-  if (NULL == pMsg)
-  {
+  if (NULL == pMsg) {
     return CANAL_ERROR_PARAMETER;
   }
 
   // Must be open
-  if (!m_bOpen)
-  {
+  if (!m_bOpen) {
     return CANAL_ERROR_NOT_OPEN;
   }
 
   // Must be room for the message
-  if (m_transmitList.nCount > CAN4VSCP_MAX_SNDMSG)
-  {
+  if (m_transmitList.nCount > CAN4VSCP_MAX_SNDMSG) {
     return CANAL_ERROR_FIFO_FULL;
   }
 
   dllnode *pNode = new dllnode;
-  if (NULL == pNode)
-  {
+  if (NULL == pNode) {
     return CANAL_ERROR_MEMORY;
   }
 
   canalMsg *pcanalMsg = new canalMsg;
-  if (NULL == pcanalMsg)
-  {
+  if (NULL == pcanalMsg) {
     delete pNode;
     return CANAL_ERROR_MEMORY;
   }
 
   pNode->pObject = pcanalMsg;
-  pNode->pKey = NULL;
+  pNode->pKey    = NULL;
   pNode->pstrKey = NULL;
 
   pNode->pObject = pcanalMsg;
-  pNode->pKey = NULL;
+  pNode->pKey    = NULL;
   pNode->pstrKey = NULL;
 
   memcpy(pcanalMsg, pMsg, sizeof(canalMsg));
@@ -1708,7 +1587,8 @@ int CCan4VSCPObj::writeMsg(canalMsg *pMsg)
 // writeMsg blocking
 //
 
-int CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout)
+int
+CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout)
 {
 #ifdef WIN32
   DWORD res;
@@ -1721,51 +1601,44 @@ int CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout)
     return CANAL_ERROR_PARAMETER;
 
   // Must be open
-  if (!m_bOpen)
-  {
+  if (!m_bOpen) {
     return CANAL_ERROR_NOT_OPEN;
   }
 
-  if (dll_getNodeCount(&m_transmitList) > CAN4VSCP_MAX_SNDMSG)
-  {
+  if (dll_getNodeCount(&m_transmitList) > CAN4VSCP_MAX_SNDMSG) {
 
 #ifdef WIN32
     ResetEvent(m_transmitDataPutEvent);
 
     res = WaitForSingleObject(m_transmitDataPutEvent, Timeout);
 
-    if (res == WAIT_TIMEOUT)
-    {
+    if (res == WAIT_TIMEOUT) {
       return CANAL_ERROR_TIMEOUT;
     }
-    else if (res == WAIT_ABANDONED)
-    {
+    else if (res == WAIT_ABANDONED) {
       return CANAL_ERROR_GENERIC;
     }
 #else
     res = semaphoreTimedWait(&m_transmitDataPutSem, Timeout);
-    if (0 != res)
-    {
+    if (0 != res) {
       return (EAGAIN == errno) ? CANAL_ERROR_TIMEOUT : CANAL_ERROR_GENERIC;
     }
 #endif
   }
 
   dllnode *pNode = new dllnode;
-  if (NULL == pNode)
-  {
+  if (NULL == pNode) {
     return CANAL_ERROR_MEMORY;
   }
 
   canalMsg *pcanalMsg = new canalMsg;
-  if (NULL == pcanalMsg)
-  {
+  if (NULL == pcanalMsg) {
     delete pNode;
     return CANAL_ERROR_MEMORY;
   }
 
   pNode->pObject = pcanalMsg;
-  pNode->pKey = NULL;
+  pNode->pKey    = NULL;
   pNode->pstrKey = NULL;
 
   memcpy(pcanalMsg, pMsg, sizeof(canalMsg));
@@ -1786,40 +1659,35 @@ int CCan4VSCPObj::writeMsgBlocking(canalMsg *pMsg, uint32_t Timeout)
 // readMsg
 //
 
-int CCan4VSCPObj::readMsg(canalMsg *pMsg)
+int
+CCan4VSCPObj::readMsg(canalMsg *pMsg)
 {
   int rv = CANAL_ERROR_SUCCESS;
 
   // Must be a message pointer
-  if (NULL == pMsg)
-  {
+  if (NULL == pMsg) {
     return CANAL_ERROR_PARAMETER;
   }
 
   // Must be open
-  if (!m_bOpen)
-  {
+  if (!m_bOpen) {
     return CANAL_ERROR_NOT_OPEN;
   }
 
   LOCK_MUTEX(m_receiveMutex);
-  if ((0 == m_receiveList.nCount) || (NULL == m_receiveList.pHead) ||
-      (NULL == m_receiveList.pHead->pObject))
-  {
+  if ((0 == m_receiveList.nCount) || (NULL == m_receiveList.pHead) || (NULL == m_receiveList.pHead->pObject)) {
     UNLOCK_MUTEX(m_receiveMutex);
     return CANAL_ERROR_FIFO_EMPTY;
   }
 
   memcpy(pMsg, m_receiveList.pHead->pObject, sizeof(canalMsg));
   dll_removeNode(&m_receiveList, m_receiveList.pHead);
-  if (m_receiveList.nCount == 0)
-  {
+  if (m_receiveList.nCount == 0) {
 #ifdef WIN32
     ResetEvent(m_receiveDataEvent);
 #else
     // Drain stale wakeup tokens now that the queue is empty
-    while (0 == semaphoreTimedWait(&m_receiveDataSem, 0))
-    {
+    while (0 == semaphoreTimedWait(&m_receiveDataSem, 0)) {
       ;
     }
 #endif
@@ -1833,7 +1701,8 @@ int CCan4VSCPObj::readMsg(canalMsg *pMsg)
 // readMsgBlocking
 //
 
-int CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout)
+int
+CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout)
 {
   int rv = CANAL_ERROR_SUCCESS;
 #ifdef WIN32
@@ -1843,62 +1712,51 @@ int CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout)
 #endif
 
   // Must be a message pointer
-  if (NULL == pMsg)
-  {
+  if (NULL == pMsg) {
     return CANAL_ERROR_PARAMETER;
   }
 
   // Must be open
-  if (!m_bOpen)
-  {
+  if (!m_bOpen) {
     return CANAL_ERROR_NOT_OPEN;
   }
 
   // Yes we block if in queue is empty
-  if (0 == m_receiveList.nCount)
-  {
+  if (0 == m_receiveList.nCount) {
 #ifdef WIN32
     res = WaitForSingleObject(m_receiveDataEvent, timeout);
 
-    if (res == WAIT_TIMEOUT)
-    {
+    if (res == WAIT_TIMEOUT) {
       return CANAL_ERROR_TIMEOUT;
     }
-    else if (res == WAIT_ABANDONED)
-    {
+    else if (res == WAIT_ABANDONED) {
       return CANAL_ERROR_GENERIC;
     }
 #else
     res = semaphoreTimedWait(&m_receiveDataSem, timeout);
-    if ((0 != res) && (EAGAIN == errno))
-    {
+    if ((0 != res) && (EAGAIN == errno)) {
       return CANAL_ERROR_TIMEOUT;
     }
 #endif
   }
 
   LOCK_MUTEX(m_receiveMutex);
-  if ((m_receiveList.nCount > 0) && (NULL != m_receiveList.pHead) &&
-      (NULL != m_receiveList.pHead->pObject))
-  {
+  if ((m_receiveList.nCount > 0) && (NULL != m_receiveList.pHead) && (NULL != m_receiveList.pHead->pObject)) {
     memcpy(pMsg, m_receiveList.pHead->pObject, sizeof(canalMsg));
     dll_removeNode(&m_receiveList, m_receiveList.pHead);
-    if (0 == m_receiveList.nCount)
-    {
+    if (0 == m_receiveList.nCount) {
 #ifdef WIN32
       ResetEvent(m_receiveDataEvent);
 #else
       // Drain stale wakeup tokens now that the queue is empty
-      while (0 == semaphoreTimedWait(&m_receiveDataSem, 0))
-      {
+      while (0 == semaphoreTimedWait(&m_receiveDataSem, 0)) {
         ;
       }
 #endif
     }
     UNLOCK_MUTEX(m_receiveMutex);
   }
-  else
-  {
+  else {
     UNLOCK_MUTEX(m_receiveMutex);
     return CANAL_ERROR_FIFO_EMPTY;
   }
@@ -1910,10 +1768,10 @@ int CCan4VSCPObj::readMsgBlocking(canalMsg *pMsg, uint32_t timeout)
 // dataAvailable
 //
 
-int CCan4VSCPObj::dataAvailable(void)
+int
+CCan4VSCPObj::dataAvailable(void)
 {
-  if (!m_bOpen)
-  {
+  if (!m_bOpen) {
     return 0;
   }
 
@@ -1924,11 +1782,11 @@ int CCan4VSCPObj::dataAvailable(void)
 //	getStatistics
 //
 
-int CCan4VSCPObj::getStatistics(PCANALSTATISTICS pCanalStatistics)
+int
+CCan4VSCPObj::getStatistics(PCANALSTATISTICS pCanalStatistics)
 {
   // Must be a valid pointer
-  if (NULL == pCanalStatistics)
-  {
+  if (NULL == pCanalStatistics) {
     return CANAL_ERROR_PARAMETER;
   }
 
@@ -1941,17 +1799,16 @@ int CCan4VSCPObj::getStatistics(PCANALSTATISTICS pCanalStatistics)
 //	getStatus
 //
 
-int CCan4VSCPObj::getStatus(PCANALSTATUS pCanalStatus)
+int
+CCan4VSCPObj::getStatus(PCANALSTATUS pCanalStatus)
 {
   // Must be a message pointer
-  if (NULL == pCanalStatus)
-  {
+  if (NULL == pCanalStatus) {
     return CANAL_ERROR_PARAMETER;
   }
 
   // Must be open
-  if (!m_bOpen)
-  {
+  if (!m_bOpen) {
     return CANAL_ERROR_NOT_OPEN;
   }
 
@@ -1962,16 +1819,16 @@ int CCan4VSCPObj::getStatus(PCANALSTATUS pCanalStatus)
 // getDeviceCapabilities
 //
 
-bool CCan4VSCPObj::getDeviceCapabilities(void)
+bool
+CCan4VSCPObj::getDeviceCapabilities(void)
 {
   uint8_t sendData[512];
 
   // Payload: Our capabilities
-  const uint8_t payload[2] = {1, 10};
-  const uint8_t saveseq = m_sequencyno; // Sequency used for this frame
+  const uint8_t payload[2] = { 1, 10 };
+  const uint8_t saveseq    = m_sequencyno; // Sequency used for this frame
   const uint16_t len =
-      can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_REQUEST,
-                          0, m_sequencyno++, 2, payload, 2);
+    can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_REQUEST, 0, m_sequencyno++, 2, payload, 2);
 
   // Empty reply list
   LOCK_MUTEX(m_responseMutex);
@@ -1986,37 +1843,28 @@ bool CCan4VSCPObj::getDeviceCapabilities(void)
   cmdResponseMsg msgResponse;
   uint32_t start = getClockMilliSeconds();
 
-  while (getClockMilliSeconds() < (start + 500))
-  {
+  while (getClockMilliSeconds() < (start + 500)) {
 
     bool bResponse = false;
 
     LOCK_MUTEX(m_responseMutex);
-    if ((NULL != m_responseList.pHead) &&
-        (NULL != m_responseList.pHead->pObject))
-    {
-      memcpy(&msgResponse, m_responseList.pHead->pObject,
-             sizeof(cmdResponseMsg));
+    if ((NULL != m_responseList.pHead) && (NULL != m_responseList.pHead->pObject)) {
+      memcpy(&msgResponse, m_responseList.pHead->pObject, sizeof(cmdResponseMsg));
       dll_removeNode(&m_responseList, m_responseList.pHead);
       bResponse = true;
     }
     UNLOCK_MUTEX(m_responseMutex);
 
-    if (bResponse)
-    {
+    if (bResponse) {
 
-      if ((VSCP_SERIAL_DRIVER_CAPS_SIZE == msgResponse.sizePayload) &&
-          (saveseq == msgResponse.seq) &&
-          (VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_RESPONSE == msgResponse.op))
-      {
+      if ((VSCP_SERIAL_DRIVER_CAPS_SIZE == msgResponse.sizePayload) && (saveseq == msgResponse.seq) &&
+          (VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_RESPONSE == msgResponse.op)) {
 
-        m_caps.maxVscpFrames =
-            (((uint16_t)msgResponse.payload[0]) << 8) + msgResponse.payload[1];
+        m_caps.maxVscpFrames = (((uint16_t) msgResponse.payload[0]) << 8) + msgResponse.payload[1];
         if (!m_caps.maxVscpFrames)
           m_caps.maxVscpFrames = 1; // Zero not allowed
 
-        m_caps.maxCanalFrames =
-            (((uint16_t)msgResponse.payload[2]) << 8) + msgResponse.payload[3];
+        m_caps.maxCanalFrames = (((uint16_t) msgResponse.payload[2]) << 8) + msgResponse.payload[3];
         if (!m_caps.maxCanalFrames)
           m_caps.maxCanalFrames = 1; // Zero not allowed
       }
@@ -2032,40 +1880,35 @@ bool CCan4VSCPObj::getDeviceCapabilities(void)
 // sendMsg
 //
 
-bool CCan4VSCPObj::sendMsg(uint8_t *buffer, short size)
+bool
+CCan4VSCPObj::sendMsg(uint8_t *buffer, short size)
 {
   // uint8_t flags = 0;
   bool rv;
 
-  if (m_com.isOpen())
-  {
+  if (m_com.isOpen()) {
 
     LOCK_MUTEX(m_can4vscpMutex);
 #ifdef WIN32
-    if (m_com.writebuf(buffer, size))
-    {
+    if (m_com.writebuf(buffer, size)) {
       rv = true;
     }
-    else
-    {
+    else {
       // Put message back in ququq
 
       rv = false;
     }
 #else
-    if (m_com.comm_puts((char *)buffer, size))
-    {
+    if (m_com.comm_puts((char *) buffer, size)) {
       rv = true;
     }
-    else
-    {
+    else {
       rv = false;
     }
 #endif
     UNLOCK_MUTEX(m_can4vscpMutex);
   }
-  else
-  {
+  else {
     rv = false;
   }
 
@@ -2077,7 +1920,8 @@ bool CCan4VSCPObj::sendMsg(uint8_t *buffer, short size)
 //
 //
 
-bool CCan4VSCPObj::sendCommand(uint8_t cmdcode, uint8_t *pParam, uint8_t size)
+bool
+CCan4VSCPObj::sendCommand(uint8_t cmdcode, uint8_t *pParam, uint8_t size)
 {
   uint8_t sendData[512];
   uint8_t payload[256 + 1];
@@ -2085,15 +1929,18 @@ bool CCan4VSCPObj::sendCommand(uint8_t cmdcode, uint8_t *pParam, uint8_t size)
 
   // Command code + parameters
   payload[lenPayload++] = cmdcode;
-  if (size)
-  {
+  if (size) {
     memcpy(payload + lenPayload, pParam, size);
     lenPayload += size;
   }
 
-  const uint16_t len = can4vscp_buildFrame(
-      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND, 0, m_sequencyno++,
-      (uint16_t)((size + 1) & 0xff), payload, lenPayload);
+  const uint16_t len = can4vscp_buildFrame(sendData,
+                                           VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND,
+                                           0,
+                                           m_sequencyno++,
+                                           (uint16_t) ((size + 1) & 0xff),
+                                           payload,
+                                           lenPayload);
 
   // Empty reply list
   LOCK_MUTEX(m_responseMutex);
@@ -2108,21 +1955,18 @@ bool CCan4VSCPObj::sendCommand(uint8_t cmdcode, uint8_t *pParam, uint8_t size)
 //
 //
 
-bool CCan4VSCPObj::wait4CommandResponse(cmdResponseMsg *pMsg, uint8_t cmdcode,
-                                        uint8_t saveseq, uint32_t timeout)
+bool
+CCan4VSCPObj::wait4CommandResponse(cmdResponseMsg *pMsg, uint8_t cmdcode, uint8_t saveseq, uint32_t timeout)
 {
   // uint32_t start = GetTickCount();
   uint32_t start = getClockMilliSeconds();
 
-  while (getClockMilliSeconds() < (start + timeout))
-  {
+  while (getClockMilliSeconds() < (start + timeout)) {
 
     bool bResponse = false;
 
     LOCK_MUTEX(m_responseMutex);
-    if ((NULL != m_responseList.pHead) &&
-        (NULL != m_responseList.pHead->pObject))
-    {
+    if ((NULL != m_responseList.pHead) && (NULL != m_responseList.pHead->pObject)) {
       memcpy(pMsg, m_responseList.pHead->pObject, sizeof(cmdResponseMsg));
       dll_removeNode(&m_responseList, m_responseList.pHead);
       bResponse = true;
@@ -2130,9 +1974,8 @@ bool CCan4VSCPObj::wait4CommandResponse(cmdResponseMsg *pMsg, uint8_t cmdcode,
     UNLOCK_MUTEX(m_responseMutex);
 
     if (bResponse && (2 == pMsg->sizePayload) && (saveseq == pMsg->seq) &&
-        (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND_REPLY == pMsg->op) &&
-        (0 == pMsg->payload[0]) && (cmdcode == pMsg->payload[1]))
-    {
+        (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND_REPLY == pMsg->op) && (0 == pMsg->payload[0]) &&
+        (cmdcode == pMsg->payload[1])) {
       return true;
     }
 
@@ -2146,9 +1989,8 @@ bool CCan4VSCPObj::wait4CommandResponse(cmdResponseMsg *pMsg, uint8_t cmdcode,
 // sendCommandWait
 //
 
-bool CCan4VSCPObj::sendCommandWait(uint8_t cmdcode, uint8_t *pParam,
-                                   uint8_t size, cmdResponseMsg *pMsg,
-                                   uint32_t timeout)
+bool
+CCan4VSCPObj::sendCommandWait(uint8_t cmdcode, uint8_t *pParam, uint8_t size, cmdResponseMsg *pMsg, uint32_t timeout)
 {
   // Save sequence number
   uint8_t saveseq = m_sequencyno;
@@ -2165,8 +2007,8 @@ bool CCan4VSCPObj::sendCommandWait(uint8_t cmdcode, uint8_t *pParam,
 //
 //
 
-bool CCan4VSCPObj::sendConfig(uint8_t codeConfig, uint8_t *pParam,
-                              uint8_t size)
+bool
+CCan4VSCPObj::sendConfig(uint8_t codeConfig, uint8_t *pParam, uint8_t size)
 {
   uint8_t sendData[512];
   uint8_t payload[256 + 1];
@@ -2174,15 +2016,18 @@ bool CCan4VSCPObj::sendConfig(uint8_t codeConfig, uint8_t *pParam,
 
   // Config code + parameters
   payload[lenPayload++] = codeConfig;
-  if (size)
-  {
+  if (size) {
     memcpy(payload + lenPayload, pParam, size);
     lenPayload += size;
   }
 
-  const uint16_t len = can4vscp_buildFrame(
-      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE, 0, m_sequencyno++,
-      (uint16_t)(size & 0xff), payload, lenPayload);
+  const uint16_t len = can4vscp_buildFrame(sendData,
+                                           VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE,
+                                           0,
+                                           m_sequencyno++,
+                                           (uint16_t) (size & 0xff),
+                                           payload,
+                                           lenPayload);
 
   // Empty reply list
   LOCK_MUTEX(m_responseMutex);
@@ -2197,41 +2042,33 @@ bool CCan4VSCPObj::sendConfig(uint8_t codeConfig, uint8_t *pParam,
 //
 //
 
-bool CCan4VSCPObj::wait4ConfigResponse(cmdResponseMsg *pMsg, uint8_t codeConfig,
-                                       uint8_t saveseq, uint32_t timeout)
+bool
+CCan4VSCPObj::wait4ConfigResponse(cmdResponseMsg *pMsg, uint8_t codeConfig, uint8_t saveseq, uint32_t timeout)
 {
   // uint32_t start = GetTickCount();
   uint32_t start = getClockMilliSeconds();
 
-  while (getClockMilliSeconds() < (start + timeout))
-  {
+  while (getClockMilliSeconds() < (start + timeout)) {
 
     bool bResponse = false;
 
     LOCK_MUTEX(m_responseMutex);
-    if ((NULL != m_responseList.pHead) &&
-        (NULL != m_responseList.pHead->pObject))
-    {
+    if ((NULL != m_responseList.pHead) && (NULL != m_responseList.pHead->pObject)) {
       memcpy(pMsg, m_responseList.pHead->pObject, sizeof(cmdResponseMsg));
       dll_removeNode(&m_responseList, m_responseList.pHead);
       bResponse = true;
     }
     UNLOCK_MUTEX(m_responseMutex);
 
-    if (bResponse)
-    {
+    if (bResponse) {
 
-      if ((2 == pMsg->sizePayload) && (saveseq == pMsg->seq) &&
-          (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK == pMsg->op) &&
-          (0 == pMsg->payload[0]) && (codeConfig == pMsg->payload[1]))
-      {
+      if ((2 == pMsg->sizePayload) && (saveseq == pMsg->seq) && (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK == pMsg->op) &&
+          (0 == pMsg->payload[0]) && (codeConfig == pMsg->payload[1])) {
         return true;
       }
 
-      if ((2 == pMsg->sizePayload) && (saveseq == pMsg->seq) &&
-          (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK == pMsg->op) &&
-          (0 == pMsg->payload[0]) && (codeConfig == pMsg->payload[1]))
-      {
+      if ((2 == pMsg->sizePayload) && (saveseq == pMsg->seq) && (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK == pMsg->op) &&
+          (0 == pMsg->payload[0]) && (codeConfig == pMsg->payload[1])) {
         return false;
       }
     }
@@ -2246,9 +2083,8 @@ bool CCan4VSCPObj::wait4ConfigResponse(cmdResponseMsg *pMsg, uint8_t codeConfig,
 // sendConfigWait
 //
 
-bool CCan4VSCPObj::sendConfigWait(uint8_t codeConfig, uint8_t *pParam,
-                                  uint8_t size, cmdResponseMsg *pMsg,
-                                  uint32_t timeout)
+bool
+CCan4VSCPObj::sendConfigWait(uint8_t codeConfig, uint8_t *pParam, uint8_t size, cmdResponseMsg *pMsg, uint32_t timeout)
 {
   // Save sequence number
   uint8_t saveseq = m_sequencyno;
@@ -2264,22 +2100,21 @@ bool CCan4VSCPObj::sendConfigWait(uint8_t codeConfig, uint8_t *pParam,
 // checkCRC
 //
 
-bool CCan4VSCPObj::checkCRC(void)
-{
-  return (0 != can4vscp_checkCRC(m_bufferMsgRcv, m_lengthMsgRcv));
-}
+bool
+CCan4VSCPObj::checkCRC(void)
+{ return (0 != can4vscp_checkCRC(m_bufferMsgRcv, m_lengthMsgRcv)); }
 
 ///////////////////////////////////////////////////////////////////////////////
 // sendACK
 //
 //
 
-void CCan4VSCPObj::sendACK(uint8_t seq)
+void
+CCan4VSCPObj::sendACK(uint8_t seq)
 {
   uint8_t sendData[16];
 
-  const uint16_t len = can4vscp_buildFrame(
-      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK, 0, seq, 0, NULL, 0);
+  const uint16_t len = can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK, 0, seq, 0, NULL, 0);
 
   // Send the event (sendMsg serializes port access)
   sendMsg(sendData, len);
@@ -2290,12 +2125,12 @@ void CCan4VSCPObj::sendACK(uint8_t seq)
 //
 //
 
-void CCan4VSCPObj::sendNACK(uint8_t seq)
+void
+CCan4VSCPObj::sendNACK(uint8_t seq)
 {
   uint8_t sendData[16];
 
-  const uint16_t len = can4vscp_buildFrame(
-      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK, 0, seq, 0, NULL, 0);
+  const uint16_t len = can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK, 0, seq, 0, NULL, 0);
 
   // Send the event (sendMsg serializes port access)
   sendMsg(sendData, len);
@@ -2306,13 +2141,12 @@ void CCan4VSCPObj::sendNACK(uint8_t seq)
 //
 //
 
-void CCan4VSCPObj::sendNoopFrame(void)
+void
+CCan4VSCPObj::sendNoopFrame(void)
 {
   uint8_t sendData[16];
 
-  const uint16_t len =
-      can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP, 0,
-                          m_sequencyno++, 0, NULL, 0);
+  const uint16_t len = can4vscp_buildFrame(sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP, 0, m_sequencyno++, 0, NULL, 0);
 
   // Send the event (sendMsg serializes port access)
   sendMsg(sendData, len);
@@ -2323,25 +2157,20 @@ void CCan4VSCPObj::sendNoopFrame(void)
 //
 //
 
-bool CCan4VSCPObj::addToResponseQueue(void)
+bool
+CCan4VSCPObj::addToResponseQueue(void)
 {
-  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK)
-  {
+  if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) {
 
     LOCK_MUTEX(m_responseMutex);
     if (msgResponseInfo.bWaitingForAckNack &&
-        (msgResponseInfo.channel ==
-         m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL]) &&
-        (msgResponseInfo.seq ==
-         m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY]))
-    {
+        (msgResponseInfo.channel == m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL]) &&
+        (msgResponseInfo.seq == m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY])) {
 
-      if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK ==
-          m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE])
-      {
+      if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK == m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE]) {
 
         //  Positive things happens here
-        msgResponseInfo.bAck = true;
+        msgResponseInfo.bAck               = true;
         msgResponseInfo.bWaitingForAckNack = false;
 #ifdef WIN32
         SetEvent(m_transmitAckNackEvent);
@@ -2349,12 +2178,10 @@ bool CCan4VSCPObj::addToResponseQueue(void)
         semaphorePost(&m_transmitAckNackSem);
 #endif
       }
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK ==
-               m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE])
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK == m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE]) {
 
         //  Negative things happen to, sometimes
-        msgResponseInfo.bAck = false;
+        msgResponseInfo.bAck               = false;
         msgResponseInfo.bWaitingForAckNack = false;
 #ifdef WIN32
         SetEvent(m_transmitAckNackEvent);
@@ -2367,43 +2194,35 @@ bool CCan4VSCPObj::addToResponseQueue(void)
   }
 
   cmdResponseMsg *pMsg = new cmdResponseMsg;
-  if (NULL != pMsg)
-  {
+  if (NULL != pMsg) {
 
     dllnode *pNode = new dllnode;
-    if (NULL != pNode)
-    {
+    if (NULL != pNode) {
 
-      pMsg->op = m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE];
-      pMsg->channel = m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL];
-      pMsg->seq = m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY];
-      pMsg->sizePayload =
-          ((uint16_t)m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
+      pMsg->op          = m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_TYPE];
+      pMsg->channel     = m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_CHANNEL];
+      pMsg->seq         = m_bufferMsgRcv[VSCP_CAN4VSCP_DRIVER_POS_FRAME_SEQUENCY];
+      pMsg->sizePayload = ((uint16_t) m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
 
-      if (pMsg->sizePayload)
-      {
-        memcpy(pMsg->payload, m_bufferMsgRcv + 5,
-               (pMsg->sizePayload > 512) ? 512 : pMsg->sizePayload);
+      if (pMsg->sizePayload) {
+        memcpy(pMsg->payload, m_bufferMsgRcv + 5, (pMsg->sizePayload > 512) ? 512 : pMsg->sizePayload);
       }
 
       pNode->pObject = pMsg;
       LOCK_MUTEX(m_responseMutex);
       // Bound the queue - drop the oldest response if full
-      if (m_responseList.nCount >= CAN4VSCP_MAX_RESPONSEMSG)
-      {
+      if (m_responseList.nCount >= CAN4VSCP_MAX_RESPONSEMSG) {
         dll_removeNode(&m_responseList, m_responseList.pHead);
       }
       dll_addNode(&m_responseList, pNode);
       UNLOCK_MUTEX(m_responseMutex);
     }
-    else
-    {
+    else {
       delete pMsg;
       return false;
     }
   }
-  else
-  {
+  else {
     return false;
   }
 
@@ -2415,122 +2234,107 @@ bool CCan4VSCPObj::addToResponseQueue(void)
 //
 //
 
-bool CCan4VSCPObj::serialData2StateMachine(void)
+bool
+CCan4VSCPObj::serialData2StateMachine(void)
 {
   uint8_t c; // Serial character
   int cnt = 0;
 
   // Read RS-232 data
   c = m_com.readChar(&cnt);
-  if (cnt > 0)
-  {
+  if (cnt > 0) {
     DEBUG_RCV_PRINT("cnt=%02X \n", c);
   }
 
-  while (cnt > 0)
-  { // Linux sets cnt ==-1 if no data
+  while (cnt > 0) { // Linux sets cnt ==-1 if no data
 
-    switch (m_RxMsgState)
-    {
+    switch (m_RxMsgState) {
 
-      // We are virgin - no package start received yet
-    case INCOMING_STATE_NONE:
+        // We are virgin - no package start received yet
+      case INCOMING_STATE_NONE:
 
-      if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c))
-      {
-        DEBUG_RCV_PRINT(" STATE_NONE/SUBSATE_DLE \n");
-        m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
-      }
-      else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c))
-      {
-        DEBUG_RCV_PRINT(" STATE_STX/SUBSATE_NONE ");
-        m_RxMsgState = INCOMING_STATE_STX;
-        m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
-        m_lengthMsgRcv = 0;
-      }
-      else
-      {
-        DEBUG_RCV_PRINT(" STATE_NONE/SUBSATE_NONE \n");
-        m_lengthMsgRcv = 0;
-        m_RxMsgState = INCOMING_STATE_NONE;
-        m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
-      }
-      break;
-
-      // We have received package start but not end
-    case INCOMING_STATE_STX:
-
-      if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c))
-      {
-        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_DLE \n");
-        m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
-      }
-      else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c))
-      {
-        // This is strange as a DEL STX is not expected here
-        // We try to sync up again...
-        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE \n");
-        m_RxMsgState = INCOMING_STATE_STX;
-        m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
-        m_lengthMsgRcv = 0;
-      }
-      else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (ETX == c))
-      {
-
-        // We have a packet
-        DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n");
-        m_RxMsgState = INCOMING_STATE_NONE;
-        m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
-        DEBUG_RCV_PRINT(" ***FRAME*** \n");
-        return true;
-      }
-      else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (DLE == c))
-      {
-        // Byte stuffed DLE  i.e. DLE DLE == DLE
-        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE\n");
-        m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
-        if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv))
-        {
-          m_bufferMsgRcv[m_lengthMsgRcv++] = c;
+        if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c)) {
+          DEBUG_RCV_PRINT(" STATE_NONE/SUBSATE_DLE \n");
+          m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
         }
-        else
-        {
-          // This packet has wrong format as it have
-          // to many databytes - start all over!
+        else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c)) {
+          DEBUG_RCV_PRINT(" STATE_STX/SUBSATE_NONE ");
+          m_RxMsgState    = INCOMING_STATE_STX;
+          m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+          m_lengthMsgRcv  = 0;
+        }
+        else {
+          DEBUG_RCV_PRINT(" STATE_NONE/SUBSATE_NONE \n");
+          m_lengthMsgRcv  = 0;
+          m_RxMsgState    = INCOMING_STATE_NONE;
+          m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+        }
+        break;
+
+        // We have received package start but not end
+      case INCOMING_STATE_STX:
+
+        if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c)) {
+          DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_DLE \n");
+          m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
+        }
+        else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c)) {
+          // This is strange as a DEL STX is not expected here
+          // We try to sync up again...
+          DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE \n");
+          m_RxMsgState    = INCOMING_STATE_STX;
+          m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+          m_lengthMsgRcv  = 0;
+        }
+        else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (ETX == c)) {
+
+          // We have a packet
           DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n");
-          m_lengthMsgRcv = 0;
-          m_RxMsgState = INCOMING_STATE_NONE;
+          m_RxMsgState    = INCOMING_STATE_NONE;
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+          DEBUG_RCV_PRINT(" ***FRAME*** \n");
+          return true;
         }
-      } // We come here if data is received
-      else
-      {
-        DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE\n ");
-        m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
-        if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv))
-        {
-          m_bufferMsgRcv[m_lengthMsgRcv++] = c;
-        }
-        else
-        {
-          // This packet has wrong format as it have
-          // to many databytes - start over!
-          m_lengthMsgRcv = 0;
-          DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n ");
-          m_RxMsgState = INCOMING_STATE_NONE;
+        else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (DLE == c)) {
+          // Byte stuffed DLE  i.e. DLE DLE == DLE
+          DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE\n");
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+          if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv)) {
+            m_bufferMsgRcv[m_lengthMsgRcv++] = c;
+          }
+          else {
+            // This packet has wrong format as it have
+            // to many databytes - start all over!
+            DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n");
+            m_lengthMsgRcv  = 0;
+            m_RxMsgState    = INCOMING_STATE_NONE;
+            m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+          }
+        } // We come here if data is received
+        else {
+          DEBUG_RCV_PRINT(" STATE_STX/SUBSTATE_NONE\n ");
+          m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+          if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv)) {
+            m_bufferMsgRcv[m_lengthMsgRcv++] = c;
+          }
+          else {
+            // This packet has wrong format as it have
+            // to many databytes - start over!
+            m_lengthMsgRcv = 0;
+            DEBUG_RCV_PRINT(" STATE_NONE/SUBSTATE_NONE\n ");
+            m_RxMsgState    = INCOMING_STATE_NONE;
+            m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
+          }
         }
-      }
-      break;
+        break;
 
-    case INCOMING_STATE_ETX:
-      break;
+      case INCOMING_STATE_ETX:
+        break;
     }
 
     // Read RS-232 data
     c = m_com.readChar(&cnt);
-    if (cnt > 0)
-    {
+    if (cnt > 0) {
       DEBUG_RCV_PRINT("Rcv=%02X\n", c);
     }
 
@@ -2544,37 +2348,34 @@ bool CCan4VSCPObj::serialData2StateMachine(void)
 //
 //
 
-void CCan4VSCPObj::readSerialData(void)
+void
+CCan4VSCPObj::readSerialData(void)
 {
   int cnt = 0;
 
-  do
-  {
+  do {
 
-    if (serialData2StateMachine())
-    {
+    if (serialData2StateMachine()) {
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
       DEBUG_RCV_PRINT(" OPERATION\n");
-      DEBUG_RCV_PRINT(" Operation=%d payload=%d\n", m_bufferMsgRcv[0],
-                      m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
-      for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]); g++)
-      {
+      DEBUG_RCV_PRINT(" Operation=%d payload=%d\n", m_bufferMsgRcv[0], m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
+      for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]); g++) {
         fprintf(m_flog, " %02X", m_bufferMsgRcv[5 + g]);
       }
       fprintf(m_flog, "\n");
 #endif
 
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("CRC check\n");
+#endif
+
       // Check CRC
-      if (!checkCRC())
-      {
+      if (!checkCRC()) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
         DEBUG_RCV_PRINT(" CRC Failed!\n");
-        DEBUG_RCV_PRINT(" Operation=%d payload=%d\n", m_bufferMsgRcv[0],
-                        m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
-        for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
-             g++)
-        {
+        DEBUG_RCV_PRINT(" Operation=%d payload=%d\n", m_bufferMsgRcv[0], m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
+        for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]); g++) {
           fprintf(m_flog, " %02X", m_bufferMsgRcv[5 + g]);
         }
         fprintf(m_flog, "\n");
@@ -2582,15 +2383,24 @@ void CCan4VSCPObj::readSerialData(void)
         continue;
       }
 
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("CRC check OK\n");
+#endif
+
       // Check if NOOP frame
-      if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP == (m_bufferMsgRcv[0]))
-      {
+      if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("NOOP farme\n");
+#endif        
         m_activity = getClockMilliSeconds(); // activity
         sendACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]);
       }
       // Check for CANAL message frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL == (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL == (m_bufferMsgRcv[0])) {
+
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("CANAL message frame\n");
+#endif 
 
         m_activity = getClockMilliSeconds(); // activity
 
@@ -2612,43 +2422,37 @@ void CCan4VSCPObj::readSerialData(void)
         // [len-2]  -   DLE
         // [len-1]  -   ETX
 
-        if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG)
-        {
+        if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
 
           PCANALMSG pMsg = new canalMsg;
 
-          if (NULL != pMsg)
-          {
+          if (NULL != pMsg) {
 
-            pMsg->flags = 0;
+            pMsg->flags    = 0;
             dllnode *pNode = new dllnode;
-            if (NULL != pNode)
-            {
+            if (NULL != pNode) {
 
-              pMsg->flags = 0;
+              pMsg->flags     = 0;
               pMsg->timestamp = getClockMicroSeconds();
-              pMsg->obid = 0;
+              pMsg->obid      = 0;
 
-              pMsg->id = (((uint32_t)m_bufferMsgRcv[5] << 24) & 0x1f000000) |
-                         (((uint32_t)m_bufferMsgRcv[6] << 16) & 0x00ff0000) |
-                         (((uint32_t)m_bufferMsgRcv[7] << 8) & 0x0000ff00) |
-                         (((uint32_t)m_bufferMsgRcv[8]) & 0x000000ff);
+              pMsg->id = (((uint32_t) m_bufferMsgRcv[5] << 24) & 0x1f000000) |
+                         (((uint32_t) m_bufferMsgRcv[6] << 16) & 0x00ff0000) |
+                         (((uint32_t) m_bufferMsgRcv[7] << 8) & 0x0000ff00) |
+                         (((uint32_t) m_bufferMsgRcv[8]) & 0x000000ff);
 
               pMsg->sizeData = m_bufferMsgRcv[9];
               if (pMsg->sizeData > 8)
                 pMsg->sizeData = 8; // Something is very wrong - Save the world
 
-              if (pMsg->sizeData)
-              {
-                memcpy((void *)pMsg->data, (m_bufferMsgRcv + 10),
-                       pMsg->sizeData);
+              if (pMsg->sizeData) {
+                memcpy((void *) pMsg->data, (m_bufferMsgRcv + 10), pMsg->sizeData);
               }
 
               // Always extended so set extended flag
               pMsg->flags |= CANAL_IDFLAG_EXTENDED;
 
-              if (doFilter(pMsg))
-              {
+              if (doFilter(pMsg)) {
                 pNode->pObject = pMsg;
                 LOCK_MUTEX(m_receiveMutex);
                 dll_addNode(&m_receiveList, pNode);
@@ -2663,33 +2467,31 @@ void CCan4VSCPObj::readSerialData(void)
                 m_stat.cntReceiveData += pMsg->sizeData;
                 m_stat.cntReceiveFrames += 1;
               }
-              else
-              {
+              else {
                 // Message was filtered
                 delete pMsg;
                 delete pNode;
               }
 
             } // No pNode
-            else
-            {
+            else {
               delete pMsg;
             }
 
           } // No pMsg
         }
         // No room in receive queue
-        else
-        {
+        else {
           // Full buffer
           m_stat.cntOverruns++;
         }
       }
       // Check for CANAL message frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL_TIMESTAMP ==
-               (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL_TIMESTAMP == (m_bufferMsgRcv[0])) {
 
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("Timestamped CANAL message frame\n");
+#endif 
         m_activity = getClockMilliSeconds(); // activity
 
         // CANAL message
@@ -2714,48 +2516,41 @@ void CCan4VSCPObj::readSerialData(void)
         // [len-2]  -    DLE
         // [len-1]  -    ETX
 
-        if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG)
-        {
+        if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
 
           PCANALMSG pMsg = new canalMsg;
 
-          if (NULL != pMsg)
-          {
+          if (NULL != pMsg) {
 
-            pMsg->flags = 0;
+            pMsg->flags    = 0;
             dllnode *pNode = new dllnode;
-            if (NULL != pNode)
-            {
+            if (NULL != pNode) {
 
               pMsg->flags = 0;
-              pMsg->obid = 0;
+              pMsg->obid  = 0;
 
-              pMsg->id = (((uint32_t)m_bufferMsgRcv[5] << 24) & 0x1f000000) |
-                         (((uint32_t)m_bufferMsgRcv[6] << 16) & 0x00ff0000) |
-                         (((uint32_t)m_bufferMsgRcv[7] << 8) & 0x0000ff00) |
-                         (((uint32_t)m_bufferMsgRcv[8]) & 0x000000ff);
+              pMsg->id = (((uint32_t) m_bufferMsgRcv[5] << 24) & 0x1f000000) |
+                         (((uint32_t) m_bufferMsgRcv[6] << 16) & 0x00ff0000) |
+                         (((uint32_t) m_bufferMsgRcv[7] << 8) & 0x0000ff00) |
+                         (((uint32_t) m_bufferMsgRcv[8]) & 0x000000ff);
 
-              pMsg->timestamp =
-                  (((uint32_t)m_bufferMsgRcv[9] << 24) & 0x1f000000) |
-                  (((uint32_t)m_bufferMsgRcv[10] << 16) & 0x00ff0000) |
-                  (((uint32_t)m_bufferMsgRcv[11] << 8) & 0x0000ff00) |
-                  (((uint32_t)m_bufferMsgRcv[12]) & 0x000000ff);
+              pMsg->timestamp = (((uint32_t) m_bufferMsgRcv[9] << 24) & 0x1f000000) |
+                                (((uint32_t) m_bufferMsgRcv[10] << 16) & 0x00ff0000) |
+                                (((uint32_t) m_bufferMsgRcv[11] << 8) & 0x0000ff00) |
+                                (((uint32_t) m_bufferMsgRcv[12]) & 0x000000ff);
 
               pMsg->sizeData = m_bufferMsgRcv[13];
               if (pMsg->sizeData > 8)
                 pMsg->sizeData = 8; // Something is very wrong - Save the world
 
-              if (pMsg->sizeData)
-              {
-                memcpy((void *)pMsg->data, (m_bufferMsgRcv + 14),
-                       pMsg->sizeData);
+              if (pMsg->sizeData) {
+                memcpy((void *) pMsg->data, (m_bufferMsgRcv + 14), pMsg->sizeData);
               }
 
               // Always extended so set extended flag
               pMsg->flags |= CANAL_IDFLAG_EXTENDED;
 
-              if (doFilter(pMsg))
-              {
+              if (doFilter(pMsg)) {
                 pNode->pObject = pMsg;
                 LOCK_MUTEX(m_receiveMutex);
                 dll_addNode(&m_receiveList, pNode);
@@ -2770,99 +2565,96 @@ void CCan4VSCPObj::readSerialData(void)
                 m_stat.cntReceiveData += pMsg->sizeData;
                 m_stat.cntReceiveFrames += 1;
               }
-              else
-              {
+              else {
                 // Message was filtered
                 delete pMsg;
                 delete pNode;
               }
 
             } // No pNode
-            else
-            {
+            else {
               delete pMsg;
             }
 
           } // No pMsg
         }
         // No room in receive queue
-        else
-        {
+        else {
           // Full buffer
           m_stat.cntOverruns++;
         }
       }
       // Check for VSCP event frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT ==
-               (m_bufferMsgRcv[0]))
-      {
-        m_activity = getClockMilliSeconds(); // activity
-        sendNACK(
-            m_bufferMsgRcv
-                [VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
-                                                          // VSCP events
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("VSCP event frame\n");
+#endif         
+        m_activity = getClockMilliSeconds();                             // activity
+        sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
+                                                                         // VSCP events
       }
       // Check for VSCP event frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT_TIMESTAMP ==
-               (m_bufferMsgRcv[0]))
-      {
-        m_activity = getClockMilliSeconds(); // activity
-        sendNACK(
-            m_bufferMsgRcv
-                [VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
-                                                          // VSCP events
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT_TIMESTAMP == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("VSCP event frame with timestamp\n");
+#endif         
+        m_activity = getClockMilliSeconds();                             // activity
+        sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
+                                                                         // VSCP events
       }
       // Check for configure frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE == (m_bufferMsgRcv[0]))
-      {
-        m_activity = getClockMilliSeconds(); // activity
-        sendNACK(
-            m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
-                                                                    // handle
-                                                                    // configure
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("Configure frame\n");
+#endif         
+        m_activity = getClockMilliSeconds();                             // activity
+        sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
+                                                                         // handle
+                                                                         // configure
       }
       // Check for poll frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_POLL == (m_bufferMsgRcv[0]))
-      {
-        m_activity = getClockMilliSeconds(); // activity
-        sendNACK(
-            m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
-                                                                    // handle
-                                                                    // poll
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("Poll frame\n");
+#endif
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_POLL == (m_bufferMsgRcv[0])) {
+        m_activity = getClockMilliSeconds();                             // activity
+        sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
+                                                                         // handle
+                                                                         // poll
       }
       // Check for no event frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NO_EVENT == (m_bufferMsgRcv[0]))
-      {
-        m_activity = getClockMilliSeconds(); // activity
-        sendNACK(
-            m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
-                                                                    // handle no
-                                                                    // event
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NO_EVENT == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("No event frame\n");
+#endif
+        m_activity = getClockMilliSeconds();                             // activity
+        sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
+                                                                         // handle no
+                                                                         // event
       }
       // Check for multiframe VSCP message frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP ==
-               (m_bufferMsgRcv[0]))
-      {
-        m_activity = getClockMilliSeconds(); // activity
-        sendNACK(
-            m_bufferMsgRcv
-                [VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
-                                                          // vscp multi frame
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("Multiframe VSCP message frame\n");
+#endif
+        m_activity = getClockMilliSeconds();                             // activity
+        sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
+                                                                         // vscp multi frame
       }
       // Check for multiframe VSCP message frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP_TIMESTAMP ==
-               (m_bufferMsgRcv[0]))
-      {
-        m_activity = getClockMilliSeconds(); // activity
-        sendNACK(
-            m_bufferMsgRcv
-                [VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
-                                                          // vscp multi frame
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP_TIMESTAMP == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("Multiframe VSCP message frame with timestamp\n");
+#endif
+        m_activity = getClockMilliSeconds();                             // activity
+        sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
+                                                                         // vscp multi frame
       }
       // Check for multiframe CANAL message frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL ==
-               (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("Multiframe CANAL message frame\n");
+#endif
 
         m_activity = getClockMilliSeconds(); // activity
 
@@ -2889,52 +2681,43 @@ void CCan4VSCPObj::readSerialData(void)
         // [len-1]  ETX
 
         // Payload size
-        long sizePayload =
-            ((uint16_t)m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
+        long sizePayload = ((uint16_t) m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
 
         // Save pos for payload
         uint8_t *posFrame = m_bufferMsgRcv + 5;
 
-        while (sizePayload > 0)
-        {
+        while (sizePayload > 0) {
 
-          if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG)
-          {
+          if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
 
             PCANALMSG pMsg = new canalMsg;
 
-            if (NULL != pMsg)
-            {
+            if (NULL != pMsg) {
 
-              pMsg->flags = 0;
+              pMsg->flags    = 0;
               dllnode *pNode = new dllnode;
-              if (NULL != pNode)
-              {
+              if (NULL != pNode) {
 
-                pMsg->flags = 0;
+                pMsg->flags     = 0;
                 pMsg->timestamp = getClockMicroSeconds();
-                pMsg->obid = 0;
+                pMsg->obid      = 0;
 
-                pMsg->id = (((uint32_t)posFrame[0] << 24) & 0x1f000000) |
-                           (((uint32_t)posFrame[1] << 16) & 0x00ff0000) |
-                           (((uint32_t)posFrame[2] << 8) & 0x0000ff00) |
-                           (((uint32_t)posFrame[3]) & 0x000000ff);
+                pMsg->id = (((uint32_t) posFrame[0] << 24) & 0x1f000000) |
+                           (((uint32_t) posFrame[1] << 16) & 0x00ff0000) |
+                           (((uint32_t) posFrame[2] << 8) & 0x0000ff00) | (((uint32_t) posFrame[3]) & 0x000000ff);
 
                 pMsg->sizeData = posFrame[4];
                 if (pMsg->sizeData > 8)
-                  pMsg->sizeData =
-                      8; // Something is very wrong - Save the world
+                  pMsg->sizeData = 8; // Something is very wrong - Save the world
 
-                if (pMsg->sizeData)
-                {
-                  memcpy((void *)pMsg->data, (posFrame + 5), pMsg->sizeData);
+                if (pMsg->sizeData) {
+                  memcpy((void *) pMsg->data, (posFrame + 5), pMsg->sizeData);
                 }
 
                 // Always extended so set extended flag
                 pMsg->flags |= CANAL_IDFLAG_EXTENDED;
 
-                if (doFilter(pMsg))
-                {
+                if (doFilter(pMsg)) {
                   pNode->pObject = pMsg;
                   LOCK_MUTEX(m_receiveMutex);
                   dll_addNode(&m_receiveList, pNode);
@@ -2949,8 +2732,7 @@ void CCan4VSCPObj::readSerialData(void)
                   m_stat.cntReceiveData += pMsg->sizeData;
                   m_stat.cntReceiveFrames += 1;
                 }
-                else
-                {
+                else {
                   // Message was filtered
                   delete pMsg;
                   delete pNode;
@@ -2961,26 +2743,24 @@ void CCan4VSCPObj::readSerialData(void)
                 posFrame += (5 + posFrame[4]);
 
               } // No pNode
-              else
-              {
+              else {
                 delete pMsg;
               }
 
             } // No pMsg
           }
           // No room in receive queue
-          else
-          {
+          else {
             // Full buffer
             m_stat.cntOverruns++;
           }
         } // while
       }
       // Check for multiframe CANAL message frame with timestamp
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL_TIMESTAMP ==
-               (m_bufferMsgRcv[0]))
-      {
-
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL_TIMESTAMP == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+      DEBUG_RCV_PRINT("Multiframe CANAL message frame with timestamp\n");
+#endif 
         m_activity = getClockMilliSeconds(); // activity
 
         // CANAL message
@@ -3010,56 +2790,46 @@ void CCan4VSCPObj::readSerialData(void)
         // [len-1]  ETX
 
         // Payload size
-        long sizePayload =
-            ((uint16_t)m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
+        long sizePayload = ((uint16_t) m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
 
         // Save pos for payload
         uint8_t *posFrame = m_bufferMsgRcv + 5;
 
-        while (sizePayload > 0)
-        {
+        while (sizePayload > 0) {
 
-          if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG)
-          {
+          if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
 
             PCANALMSG pMsg = new canalMsg;
 
-            if (NULL != pMsg)
-            {
+            if (NULL != pMsg) {
 
-              pMsg->flags = 0;
+              pMsg->flags    = 0;
               dllnode *pNode = new dllnode;
-              if (NULL != pNode)
-              {
+              if (NULL != pNode) {
 
                 pMsg->flags = 0;
-                pMsg->obid = 0;
+                pMsg->obid  = 0;
 
-                pMsg->id = (((uint32_t)posFrame[0] << 24) & 0x1f000000) |
-                           (((uint32_t)posFrame[1] << 16) & 0x00ff0000) |
-                           (((uint32_t)posFrame[2] << 8) & 0x0000ff00) |
-                           (((uint32_t)posFrame[3]) & 0x000000ff);
+                pMsg->id = (((uint32_t) posFrame[0] << 24) & 0x1f000000) |
+                           (((uint32_t) posFrame[1] << 16) & 0x00ff0000) |
+                           (((uint32_t) posFrame[2] << 8) & 0x0000ff00) | (((uint32_t) posFrame[3]) & 0x000000ff);
 
-                pMsg->timestamp = (((uint32_t)posFrame[4] << 24) & 0x1f000000) |
-                                  (((uint32_t)posFrame[5] << 16) & 0x00ff0000) |
-                                  (((uint32_t)posFrame[6] << 8) & 0x0000ff00) |
-                                  (((uint32_t)posFrame[7]) & 0x000000ff);
+                pMsg->timestamp =
+                  (((uint32_t) posFrame[4] << 24) & 0x1f000000) | (((uint32_t) posFrame[5] << 16) & 0x00ff0000) |
+                  (((uint32_t) posFrame[6] << 8) & 0x0000ff00) | (((uint32_t) posFrame[7]) & 0x000000ff);
 
                 pMsg->sizeData = posFrame[8];
                 if (pMsg->sizeData > 8)
-                  pMsg->sizeData =
-                      8; // Something is very wrong - Save the world
+                  pMsg->sizeData = 8; // Something is very wrong - Save the world
 
-                if (pMsg->sizeData)
-                {
-                  memcpy((void *)pMsg->data, (posFrame + 9), pMsg->sizeData);
+                if (pMsg->sizeData) {
+                  memcpy((void *) pMsg->data, (posFrame + 9), pMsg->sizeData);
                 }
 
                 // Always extended so set extended flag
                 pMsg->flags |= CANAL_IDFLAG_EXTENDED;
 
-                if (doFilter(pMsg))
-                {
+                if (doFilter(pMsg)) {
                   pNode->pObject = pMsg;
                   LOCK_MUTEX(m_receiveMutex);
                   dll_addNode(&m_receiveList, pNode);
@@ -3074,8 +2844,7 @@ void CCan4VSCPObj::readSerialData(void)
                   m_stat.cntReceiveData += pMsg->sizeData;
                   m_stat.cntReceiveFrames += 1;
                 }
-                else
-                {
+                else {
                   // Message was filtered
                   delete pMsg;
                   delete pNode;
@@ -3086,73 +2855,85 @@ void CCan4VSCPObj::readSerialData(void)
                 posFrame += (5 + posFrame[4]);
 
               } // No pNode
-              else
-              {
+              else {
                 delete pMsg;
               }
 
             } // No pMsg
           }
           // No room in receive queue
-          else
-          {
+          else {
             // Full buffer
             m_stat.cntOverruns++;
           }
         } // while
       }
       // Check for sent ACK frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_SENT_ACK == (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_SENT_ACK == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("Sent ACK frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
       // Check for sent NACK frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_SENT_NACK == (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_SENT_NACK == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("Sent NACK frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
       // Check for ACK frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK == (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("ACK frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
       // Check for NACK frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK == (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("NACK frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
       // Check for ERROR frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ERROR == (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ERROR == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("ERROR frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
       // Check for command reply frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND_REPLY ==
-               (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND_REPLY == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("Command reply frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
       // Check for capabilities response frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_RESPONSE ==
-               (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_RESPONSE == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("Capabilities response frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
       // Check if command frame
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND == (m_bufferMsgRcv[0]))
-      {
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND == (m_bufferMsgRcv[0])) {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+        DEBUG_RCV_PRINT("Command frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         addToResponseQueue();
       }
 
-      m_RxMsgState = INCOMING_STATE_NONE; // reset state for next msg
+      m_RxMsgState    = INCOMING_STATE_NONE; // reset state for next msg
       m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
 
     } // frame & crc
@@ -3165,7 +2946,8 @@ void CCan4VSCPObj::readSerialData(void)
 //
 //
 
-static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
+static bool
+transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
 {
   canalMsg msg;
 
@@ -3176,22 +2958,18 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
     return false;
 
   // Must be open
-  if (!pobj->m_bOpen)
-  {
+  if (!pobj->m_bOpen) {
     return false;
   }
 
-  if (pobj->m_bDebug)
-  {
+  if (pobj->m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] transmitMessage");
   }
 
   // Must be a message to transmit - fetch a copy under lock
   LOCK_MUTEX(pobj->m_transmitMutex);
-  if ((0 == pobj->m_transmitList.nCount) ||
-      (NULL == pobj->m_transmitList.pHead) ||
-      (NULL == pobj->m_transmitList.pHead->pObject))
-  {
+  if ((0 == pobj->m_transmitList.nCount) || (NULL == pobj->m_transmitList.pHead) ||
+      (NULL == pobj->m_transmitList.pHead->pObject)) {
     UNLOCK_MUTEX(pobj->m_transmitMutex);
     return false;
   }
@@ -3227,14 +3005,17 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
   payload[lenPayload++] = msg.id & 0xff;
 
   // Data
-  for (int i = 0; i < msg.sizeData; i++)
-  {
+  for (int i = 0; i < msg.sizeData; i++) {
     payload[lenPayload++] = msg.data[i];
   }
 
-  const uint16_t len = can4vscp_buildFrame(
-      sendData, VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL, 0, (*pseq)++,
-      (uint16_t)(4 + msg.sizeData), payload, lenPayload);
+  const uint16_t len = can4vscp_buildFrame(sendData,
+                                           VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL,
+                                           0,
+                                           (*pseq)++,
+                                           (uint16_t) (4 + msg.sizeData),
+                                           payload,
+                                           lenPayload);
 
   // Arm the ACK/NACK mechanism before the frame goes out so the
   // response cannot be missed
@@ -3242,15 +3023,14 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
   ResetEvent(pobj->m_transmitAckNackEvent);
 #endif
   LOCK_MUTEX(pobj->m_responseMutex);
-  pobj->msgResponseInfo.bAck = false; // We start out being pessimistic
-  pobj->msgResponseInfo.channel = 0;
-  pobj->msgResponseInfo.seq = *pseq - 1; // Sequency for frame
+  pobj->msgResponseInfo.bAck               = false; // We start out being pessimistic
+  pobj->msgResponseInfo.channel            = 0;
+  pobj->msgResponseInfo.seq                = *pseq - 1; // Sequency for frame
   pobj->msgResponseInfo.bWaitingForAckNack = true;
   UNLOCK_MUTEX(pobj->m_responseMutex);
 
   // Send the event
-  if (!pobj->sendMsg(sendData, len))
-  {
+  if (!pobj->sendMsg(sendData, len)) {
     LOCK_MUTEX(pobj->m_responseMutex);
     pobj->msgResponseInfo.bWaitingForAckNack = false;
     UNLOCK_MUTEX(pobj->m_responseMutex);
@@ -3266,9 +3046,11 @@ static bool transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
 //
 
 #ifdef WIN32
-void workThreadTransmit(void *pObject)
+void
+workThreadTransmit(void *pObject)
 #else
-void *workThreadTransmit(void *pObject)
+void *
+workThreadTransmit(void *pObject)
 #endif
 {
 #ifdef WIN32
@@ -3279,11 +3061,10 @@ void *workThreadTransmit(void *pObject)
 #endif
 
   bool bTransmissionInProgress = false; // True while waiting for ACK/NACK
-  uint8_t seq = 0;                      // Increased by one for every frame sent
+  uint8_t seq                  = 0;     // Increased by one for every frame sent
 
-  CCan4VSCPObj *pobj = (CCan4VSCPObj *)pObject;
-  if (NULL == pobj)
-  {
+  CCan4VSCPObj *pobj = (CCan4VSCPObj *) pObject;
+  if (NULL == pobj) {
 #ifdef WIN32
     ExitThread(errorCode); // Fail
 #else
@@ -3299,25 +3080,19 @@ void *workThreadTransmit(void *pObject)
 
   // --------------------------------------------------------------------------
 
-  while (pobj->m_bRun)
-  {
+  while (pobj->m_bRun) {
 
     // Are we in transmission
-    if ((pobj->m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) &&
-        bTransmissionInProgress)
-    {
+    if ((pobj->m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) && bTransmissionInProgress) {
 #ifdef WIN32
-      if (WAIT_OBJECT_0 !=
-          WaitForSingleObject(pobj->m_transmitAckNackEvent, 500))
-      {
+      if (WAIT_OBJECT_0 != WaitForSingleObject(pobj->m_transmitAckNackEvent, 500)) {
         // We did not get a ACK/NACK in time - resend frame
         transmitMessage(pobj, &seq);
         continue;
       }
 #else
       res = semaphoreTimedWait(&pobj->m_transmitAckNackSem, 20);
-      if (0 != res)
-      {
+      if (0 != res) {
         // We did not get a ACK/NACK in time - resend frame
         transmitMessage(pobj, &seq);
         continue;
@@ -3329,18 +3104,15 @@ void *workThreadTransmit(void *pObject)
       bAck = pobj->msgResponseInfo.bAck;
       UNLOCK_MUTEX(pobj->m_responseMutex);
 
-      if (bAck)
-      {
+      if (bAck) {
 
         // ACK - Message sent successfully
 
         canalMsg msg;
 
         LOCK_MUTEX(pobj->m_transmitMutex);
-        if ((0 == pobj->m_transmitList.nCount) ||
-            (NULL == pobj->m_transmitList.pHead) ||
-            (NULL == pobj->m_transmitList.pHead->pObject))
-        {
+        if ((0 == pobj->m_transmitList.nCount) || (NULL == pobj->m_transmitList.pHead) ||
+            (NULL == pobj->m_transmitList.pHead->pObject)) {
           // Should not happen but if it does anyway... ;-/
           UNLOCK_MUTEX(pobj->m_transmitMutex);
           bTransmissionInProgress = false;
@@ -3366,8 +3138,7 @@ void *workThreadTransmit(void *pObject)
 
         bTransmissionInProgress = false;
       }
-      else
-      {
+      else {
         // NACK - Message send failed - Retransmit
         transmitMessage(pobj, &seq);
         continue;
@@ -3377,48 +3148,37 @@ void *workThreadTransmit(void *pObject)
 
     // If there is noting in the queue we wait until there is
     // something there
-    if (0 == pobj->m_transmitList.nCount)
-    {
+    if (0 == pobj->m_transmitList.nCount) {
 #ifdef WIN32
-      if (WAIT_OBJECT_0 !=
-          WaitForSingleObject(pobj->m_transmitDataGetEvent, 100))
-      {
+      if (WAIT_OBJECT_0 != WaitForSingleObject(pobj->m_transmitDataGetEvent, 100)) {
         continue;
       }
 #else
       res = semaphoreTimedWait(&pobj->m_transmitDataGetSem, 1);
-      if (0 != res)
-      {
+      if (0 != res) {
         continue;
       }
 #endif
     }
 
     // If there is something to transmit, well, then transmit it
-    if (pobj->m_transmitList.nCount > 0)
-    {
+    if (pobj->m_transmitList.nCount > 0) {
 
-      if (transmitMessage(pobj, &seq))
-      {
+      if (transmitMessage(pobj, &seq)) {
 
-        if (pobj->m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK)
-        {
+        if (pobj->m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) {
           // The message stays in the queue until ACK/NACK arrives
           bTransmissionInProgress = true;
         }
-        else
-        {
+        else {
 
           canalMsg msg;
 
           LOCK_MUTEX(pobj->m_transmitMutex);
-          if ((pobj->m_transmitList.nCount > 0) &&
-              (NULL != pobj->m_transmitList.pHead) &&
-              (NULL != pobj->m_transmitList.pHead->pObject))
-          {
+          if ((pobj->m_transmitList.nCount > 0) && (NULL != pobj->m_transmitList.pHead) &&
+              (NULL != pobj->m_transmitList.pHead->pObject)) {
 
-            memcpy(&msg, pobj->m_transmitList.pHead->pObject,
-                   sizeof(canalMsg));
+            memcpy(&msg, pobj->m_transmitList.pHead->pObject, sizeof(canalMsg));
 
             // Remove the event from the queue
             dll_removeNode(&pobj->m_transmitList, pobj->m_transmitList.pHead);
@@ -3435,21 +3195,17 @@ void *workThreadTransmit(void *pObject)
             semaphorePost(&pobj->m_transmitDataPutSem);
 #endif
           }
-          else
-          {
+          else {
             UNLOCK_MUTEX(pobj->m_transmitMutex);
           }
         }
       }
     }
-    else
-    {
+    else {
 
       // Check for i/f inactivity
-      if (pobj->m_initFlag & CAN4VSCP_FLAG_ENABLE_REOPEN)
-      {
-        if (getClockMicroSeconds() - pobj->m_activity > SOFT_OPEN_TIMOUT)
-        {
+      if (pobj->m_initFlag & CAN4VSCP_FLAG_ENABLE_REOPEN) {
+        if (getClockMicroSeconds() - pobj->m_activity > SOFT_OPEN_TIMOUT) {
           // We have an inactivity problem
           pobj->softOpen();
           pobj->m_activity = getClockMilliSeconds(); // activity
@@ -3468,8 +3224,7 @@ void *workThreadTransmit(void *pObject)
   ExitThread(errorCode);
 #else
   rv = 0xaa;
-  if (pobj->m_bDebug)
-  {
+  if (pobj->m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] TX thread terminating");
   }
   pthread_exit(&rv);
@@ -3482,9 +3237,11 @@ void *workThreadTransmit(void *pObject)
 //
 
 #ifdef WIN32
-void workThreadReceive(void *pObject)
+void
+workThreadReceive(void *pObject)
 #else
-void *workThreadReceive(void *pObject)
+void *
+workThreadReceive(void *pObject)
 #endif
 {
 #ifdef WIN32
@@ -3493,9 +3250,8 @@ void *workThreadReceive(void *pObject)
   int rv = 0;
 #endif
 
-  CCan4VSCPObj *pobj = (CCan4VSCPObj *)pObject;
-  if (NULL == pobj)
-  {
+  CCan4VSCPObj *pobj = (CCan4VSCPObj *) pObject;
+  if (NULL == pobj) {
 #ifdef WIN32
     ExitThread(errorCode); // Fail
 #else
@@ -3503,8 +3259,7 @@ void *workThreadReceive(void *pObject)
 #endif
   }
 
-  while (pobj->m_bRun)
-  {
+  while (pobj->m_bRun) {
 
     // Serial writes are serialized inside sendMsg(). Holding
     // m_can4vscpMutex here would deadlock when readSerialData()
@@ -3519,8 +3274,7 @@ void *workThreadReceive(void *pObject)
   ExitThread(errorCode);
 #else
   rv = 0x55;
-  if (pobj->m_bDebug)
-  {
+  if (pobj->m_bDebug) {
     driverLog(spdlog::level::debug, "[vscpl1drv-can4vscp] RX thread terminating");
   }
   pthread_exit(&rv);

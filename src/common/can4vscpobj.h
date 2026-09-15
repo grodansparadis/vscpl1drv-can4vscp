@@ -649,7 +649,7 @@ public:
     /*!
         Message receive buffer
      */
-    uint8_t m_bufferMsgRcv[512];
+    uint8_t m_bufferMsgRcv[5120];
 
     /*!
         Current length for received message
