@@ -2390,8 +2390,8 @@ CCan4VSCPObj::readSerialData(void)
       // Check if NOOP frame
       if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("NOOP farme\n");
-#endif        
+        DEBUG_RCV_PRINT("NOOP farme\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
         sendACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]);
       }
@@ -2399,8 +2399,8 @@ CCan4VSCPObj::readSerialData(void)
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL == (m_bufferMsgRcv[0])) {
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("CANAL message frame\n");
-#endif 
+        DEBUG_RCV_PRINT("CANAL message frame\n");
+#endif
 
         m_activity = getClockMilliSeconds(); // activity
 
@@ -2490,8 +2490,8 @@ CCan4VSCPObj::readSerialData(void)
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL_TIMESTAMP == (m_bufferMsgRcv[0])) {
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("Timestamped CANAL message frame\n");
-#endif 
+        DEBUG_RCV_PRINT("Timestamped CANAL message frame\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
 
         // CANAL message
@@ -2587,8 +2587,8 @@ CCan4VSCPObj::readSerialData(void)
       // Check for VSCP event frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("VSCP event frame\n");
-#endif         
+        DEBUG_RCV_PRINT("VSCP event frame\n");
+#endif
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
                                                                          // VSCP events
@@ -2596,8 +2596,8 @@ CCan4VSCPObj::readSerialData(void)
       // Check for VSCP event frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT_TIMESTAMP == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("VSCP event frame with timestamp\n");
-#endif         
+        DEBUG_RCV_PRINT("VSCP event frame with timestamp\n");
+#endif
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
                                                                          // VSCP events
@@ -2605,8 +2605,8 @@ CCan4VSCPObj::readSerialData(void)
       // Check for configure frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("Configure frame\n");
-#endif         
+        DEBUG_RCV_PRINT("Configure frame\n");
+#endif
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
                                                                          // handle
@@ -2615,7 +2615,7 @@ CCan4VSCPObj::readSerialData(void)
       // Check for poll frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_POLL == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("Poll frame\n");
+        DEBUG_RCV_PRINT("Poll frame\n");
 #endif
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
@@ -2625,7 +2625,7 @@ CCan4VSCPObj::readSerialData(void)
       // Check for no event frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NO_EVENT == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("No event frame\n");
+        DEBUG_RCV_PRINT("No event frame\n");
 #endif
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
@@ -2635,7 +2635,7 @@ CCan4VSCPObj::readSerialData(void)
       // Check for multiframe VSCP message frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("Multiframe VSCP message frame\n");
+        DEBUG_RCV_PRINT("Multiframe VSCP message frame\n");
 #endif
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
@@ -2644,7 +2644,7 @@ CCan4VSCPObj::readSerialData(void)
       // Check for multiframe VSCP message frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP_TIMESTAMP == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("Multiframe VSCP message frame with timestamp\n");
+        DEBUG_RCV_PRINT("Multiframe VSCP message frame with timestamp\n");
 #endif
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
@@ -2653,7 +2653,7 @@ CCan4VSCPObj::readSerialData(void)
       // Check for multiframe CANAL message frame
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("Multiframe CANAL message frame\n");
+        DEBUG_RCV_PRINT("Multiframe CANAL message frame\n");
 #endif
 
         m_activity = getClockMilliSeconds(); // activity
@@ -2691,7 +2691,6 @@ CCan4VSCPObj::readSerialData(void)
           if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
 
             PCANALMSG pMsg = new canalMsg;
-
             if (NULL != pMsg) {
 
               pMsg->flags    = 0;
@@ -2751,16 +2750,24 @@ CCan4VSCPObj::readSerialData(void)
           }
           // No room in receive queue
           else {
+
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+            DEBUG_RCV_PRINT("Overrun\n");
+#endif
             // Full buffer
             m_stat.cntOverruns++;
+
+            // Get ready for next payload frame
+            sizePayload -= (5 + posFrame[4]);
+            posFrame += (5 + posFrame[4]);
           }
         } // while
       }
       // Check for multiframe CANAL message frame with timestamp
       else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL_TIMESTAMP == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-      DEBUG_RCV_PRINT("Multiframe CANAL message frame with timestamp\n");
-#endif 
+        DEBUG_RCV_PRINT("Multiframe CANAL message frame with timestamp\n");
+#endif
         m_activity = getClockMilliSeconds(); // activity
 
         // CANAL message
@@ -2863,8 +2870,16 @@ CCan4VSCPObj::readSerialData(void)
           }
           // No room in receive queue
           else {
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+            DEBUG_RCV_PRINT("Overrun\n");
+#endif
+
             // Full buffer
             m_stat.cntOverruns++;
+
+            // Get ready for next payload frame
+            sizePayload -= (5 + posFrame[4]);
+            posFrame += (5 + posFrame[4]);
           }
         } // while
       }
@@ -2952,10 +2967,13 @@ transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
   canalMsg msg;
 
   // Check pointers
-  if (NULL == pobj)
+  if (NULL == pobj) {
     return false;
-  if (NULL == pseq)
+  }
+
+  if (NULL == pseq) {
     return false;
+  }
 
   // Must be open
   if (!pobj->m_bOpen) {
