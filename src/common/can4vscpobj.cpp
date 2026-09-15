@@ -2613,10 +2613,10 @@ CCan4VSCPObj::readSerialData(void)
                                                                          // configure
       }
       // Check for poll frame
+      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_POLL == (m_bufferMsgRcv[0])) {
 #ifdef DEBUG_CAN4VSCP_RECEIVE
       DEBUG_RCV_PRINT("Poll frame\n");
 #endif
-      else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_POLL == (m_bufferMsgRcv[0])) {
         m_activity = getClockMilliSeconds();                             // activity
         sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
                                                                          // handle
