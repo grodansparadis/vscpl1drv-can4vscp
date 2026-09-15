@@ -2419,69 +2419,78 @@ CCan4VSCPObj::readSerialData(void)
       // [len-2]  -   DLE
       // [len-1]  -   ETX
 
-      if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
+      long sizePayload  = ((uint16_t) m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
+      uint8_t *posFrame = m_bufferMsgRcv + 5;
 
-        PCANALMSG pMsg = new canalMsg;
+      while (sizePayload > 0) {
 
-        if (NULL != pMsg) {
+        uint8_t dataLen = posFrame[4];
 
-          pMsg->flags    = 0;
-          dllnode *pNode = new dllnode;
-          if (NULL != pNode) {
+        // Guard: CAN data cannot exceed 8 bytes in standard CANAL frames
+        if (dataLen > 8) {
+          m_stat.cntOverruns++;
+          break; // Corrupt payload structure inside frame, abandon multi-frame parse
+        }
 
-            pMsg->flags     = 0;
-            pMsg->timestamp = getClockMicroSeconds();
-            pMsg->obid      = 0;
+        uint16_t frameSize = 5 + dataLen;
 
-            pMsg->id = (((uint32_t) m_bufferMsgRcv[5] << 24) & 0x1f000000) |
-                       (((uint32_t) m_bufferMsgRcv[6] << 16) & 0x00ff0000) |
-                       (((uint32_t) m_bufferMsgRcv[7] << 8) & 0x0000ff00) |
-                       (((uint32_t) m_bufferMsgRcv[8]) & 0x000000ff);
+        if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
+          PCANALMSG pMsg = new canalMsg;
 
-            pMsg->sizeData = m_bufferMsgRcv[9];
-            if (pMsg->sizeData > 8)
-              pMsg->sizeData = 8; // Something is very wrong - Save the world
+          if (NULL != pMsg) {
 
-            if (pMsg->sizeData) {
-              memcpy((void *) pMsg->data, (m_bufferMsgRcv + 10), pMsg->sizeData);
-            }
+            pMsg->flags    = 0;
+            dllnode *pNode = new dllnode;
+            if (NULL != pNode) {
 
-            // Always extended so set extended flag
-            pMsg->flags |= CANAL_IDFLAG_EXTENDED;
+              pMsg->flags     = CANAL_IDFLAG_EXTENDED;
+              pMsg->timestamp = getClockMicroSeconds();
+              pMsg->obid      = 0;
 
-            if (doFilter(pMsg)) {
-              pNode->pObject = pMsg;
-              LOCK_MUTEX(m_receiveMutex);
-              dll_addNode(&m_receiveList, pNode);
+              pMsg->id = (((uint32_t) m_bufferMsgRcv[5] << 24) & 0x1f000000) |
+                         (((uint32_t) m_bufferMsgRcv[6] << 16) & 0x00ff0000) |
+                         (((uint32_t) m_bufferMsgRcv[7] << 8) & 0x0000ff00) |
+                         (((uint32_t) m_bufferMsgRcv[8]) & 0x000000ff);
+
+              pMsg->sizeData = dataLen;
+              if (pMsg->sizeData) {
+                memcpy((void *) pMsg->data, (posFrame + 5), pMsg->sizeData);
+              }
+
+              if (doFilter(pMsg)) {
+                pNode->pObject = pMsg;
+                LOCK_MUTEX(m_receiveMutex);
+                dll_addNode(&m_receiveList, pNode);
 #ifdef WIN32
-              SetEvent(m_receiveDataEvent); // Signal frame in queue
+                SetEvent(m_receiveDataEvent);
 #else
-              semaphorePost(&m_receiveDataSem); // Signal frame in queue
+                semaphorePost(&m_receiveDataSem);
 #endif
-              UNLOCK_MUTEX(m_receiveMutex);
+                UNLOCK_MUTEX(m_receiveMutex);
 
-              // Update statistics
-              m_stat.cntReceiveData += pMsg->sizeData;
-              m_stat.cntReceiveFrames += 1;
-            }
+                m_stat.cntReceiveData += pMsg->sizeData;
+                m_stat.cntReceiveFrames += 1;
+              }
+              else {
+                delete pMsg;
+                delete pNode;
+              }
+            } // No pNode
             else {
-              // Message was filtered
               delete pMsg;
-              delete pNode;
             }
+          } // No pMsg
+        }
+        // No room in receive queue
+        else {
+          // Fix: Log overrun BUT still advance pointers to prevent hanging
+          m_stat.cntOverruns++;
+        }
 
-          } // No pNode
-          else {
-            delete pMsg;
-          }
-
-        } // No pMsg
-      }
-      // No room in receive queue
-      else {
-        // Full buffer
-        m_stat.cntOverruns++;
-      }
+        // Always advance pointers regardless of queue capacity
+        sizePayload -= frameSize;
+        posFrame += frameSize;
+      } // while (sizePayload > 0)
     }
     // Check for CANAL message frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL_TIMESTAMP == (m_bufferMsgRcv[0])) {
