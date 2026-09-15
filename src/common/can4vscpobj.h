@@ -63,74 +63,76 @@ typedef sem_t vscp_sem_t;
 
 // define to create a file c:/tmp/can4vscp.txt with input and
 // stat machine data for debugging
-//#define DEBUG_CAN4VSCP_RECEIVE
+// #define DEBUG_CAN4VSCP_RECEIVE
 
 // Flags
-#define CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE          0x00000004
-#define CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK                   0x00000008
-#define CAN4VSCP_FLAG_ENABLE_TIMESTAMP                      0x00000010
-#define CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE             0x00000020
-#define CAN4VSCP_FLAG_ENABLE_REOPEN                         0x00000040
-#define CAN4VSCP_FLAG_ENABLE_STRICT                         0x00000080
-#define CAN4VSCP_FLAG_ENABLE_UDP_DEBUG                      0x40000000
-#define CAN4VSCP_FLAG_ENABLE_DEBUG                          0x80000000
+#define CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE 0x00000004
+#define CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK 0x00000008
+#define CAN4VSCP_FLAG_ENABLE_TIMESTAMP 0x00000010
+#define CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE 0x00000020
+#define CAN4VSCP_FLAG_ENABLE_REOPEN 0x00000040
+#define CAN4VSCP_FLAG_ENABLE_STRICT 0x00000080
+#define CAN4VSCP_FLAG_ENABLE_UDP_DEBUG 0x40000000
+#define CAN4VSCP_FLAG_ENABLE_DEBUG 0x80000000
 
 // Default target port for UDP debug output
-#define CAN4VSCP_UDP_DEBUG_DEFAULT_PORT                     9999
+#define CAN4VSCP_UDP_DEBUG_DEFAULT_PORT 9999
 // Mutexes
-#define CANAL_DLL_CAN4VSCPDRV_OBJ_MUTEX	                    TEXT("___CANAL__DLL_CAN4VSCPDRV_OBJ_MUTEX____")
-#define CANAL_DLL_CAN4VSCPDRV_RECEIVE_MUTEX                 TEXT("___CANAL__DLL_CAN4VSCPDRV_RECEIVE_MUTEX____")
-#define CANAL_DLL_CAN4VSCPDRV_TRANSMIT_MUTEX                TEXT("___CANAL__DLL_CAN4VSCPDRV_TRANSMIT_MUTEX____")
-#define CANAL_DLL_CAN4VSCPDRV_RESPONSE_MUTEX                TEXT("___CANAL__DLL_CAN4VSCPDRV_RESPONSE_MUTEX____")
+#define CANAL_DLL_CAN4VSCPDRV_OBJ_MUTEX TEXT("___CANAL__DLL_CAN4VSCPDRV_OBJ_MUTEX____")
+#define CANAL_DLL_CAN4VSCPDRV_RECEIVE_MUTEX TEXT("___CANAL__DLL_CAN4VSCPDRV_RECEIVE_MUTEX____")
+#define CANAL_DLL_CAN4VSCPDRV_TRANSMIT_MUTEX TEXT("___CANAL__DLL_CAN4VSCPDRV_TRANSMIT_MUTEX____")
+#define CANAL_DLL_CAN4VSCPDRV_RESPONSE_MUTEX TEXT("___CANAL__DLL_CAN4VSCPDRV_RESPONSE_MUTEX____")
 
 // Max messages in input queue
-#define CAN4VSCP_MAX_RCVMSG                                 4096
+#define CAN4VSCP_MAX_RCVMSG 4096
 
 // Max messages in output queue
-#define CAN4VSCP_MAX_SNDMSG                                 4096
+#define CAN4VSCP_MAX_SNDMSG 4096
 
 // Max number of response messages in response queue
-#define CAN4VSCP_MAX_RESPONSEMSG	                        32
+#define CAN4VSCP_MAX_RESPONSEMSG 32
 
 // Capabilities for this driver
-#define CAN4VSCP_DRIVER_MAX_VSCP_FRAMES                     2
-#define CAN4VSCP_DRIVER_MAX_CANAL_FRAMES                    10
+#define CAN4VSCP_DRIVER_MAX_VSCP_FRAMES 2
+#define CAN4VSCP_DRIVER_MAX_CANAL_FRAMES 10
 
 // Define soft open timeout in microsecons
 // If enabled i/f inactivity more than tyhis timeout
 // will reopen the i/f in a soft way and continue with
 // that until activity is detected.
-#define SOFT_OPEN_TIMOUT                                    120000  // Two minutes
+#define SOFT_OPEN_TIMOUT 120000 // Two minutes
 
 // Driver info in BINHEX
 #ifdef WIN32
-#define DRIVERINFO   "PD94bWwgdmVyc2lvbiA9ICIxLjAiIGVuY29kaW5nID0gIlVURi04IiA/Pgo8Y29uZmlnPgogICAgPGRlc2NyaXB0aW9uPkNBTjRWU0NQIHN0YW5kYXJkIHNlcmlhbCBkcml2ZXIuPC9kZXNjcmlwdGlvbj4KICAgIDxsZXZlbD4xPC9sZXZlbD4KICAgIDxibG9ja2luZz55ZXM8L2Jsb2NraW5nPgogICAgPGluZm8+aHR0cDovL2h0dHA6Ly93d3cuZ3JvZGFuc3BhcmFkaXMuY29tL2ZyYW5rZnVydC9yczIzMi9tYW51YWwvZG9rdS5waHA/aWQ9dGhlX2NhbjR2c2NwX21vZGU8L2luZm8+CiAgICA8aXRlbXM+CiAgICAgICAgPGl0ZW0gcG9zPSIwIiB0eXBlPSJzdHJpbmciIGRlc2NyaXB0aW9uPSJTZXJpYWwgcG9ydCAoY29tMSwgY29tMi4uLikiIGluZm89IiIgLz4KICAgICAgICA8aXRlbSBwb3M9IjEiIHR5cGU9ImNob2ljZSIgb3B0aW9uYWw9InRydWUiIGRlc2NyaXB0aW9uPSJCYXVkcmF0ZSBjb2RlIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNwYXJhbWV0ZXJfc3RyaW5nIj4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMCIgZGVzY3JpcHRpb24gPSAiMCAtIDExNTIwMCAoRGVmYXVsdCB2YWx1ZSkiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uID0gIjEgLSAxMjgwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uID0gIjIgLSAyMzA0MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjQiIGRlc2NyaXB0aW9uID0gIjMgLSAyNTYwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjUiIGRlc2NyaXB0aW9uID0gIjQgLSA0NjA4MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjYiIGRlc2NyaXB0aW9uID0gIjUgLSA1MDAwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjciIGRlc2NyaXB0aW9uID0gIjYgLSA2MjUwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjgiIGRlc2NyaXB0aW9uID0gIjcgLSA5MjE2MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjkiIGRlc2NyaXB0aW9uID0gIjggLSAxMDAwMDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIwIiBkZXNjcmlwdGlvbiA9ICI5IC0gOTYwMCIgLz4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMTAiIGRlc2NyaXB0aW9uID0gIjEwIC0gMTkyMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjExIiBkZXNjcmlwdGlvbiA9ICIxMSAtIDM4NDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIxMiIgZGVzY3JpcHRpb24gPSAiMTIgLSA1NzYwMCIgLz4KICAgICAgICA8L2l0ZW0+CiAgICA8L2l0ZW1zPgoJCiAgICA8ZmxhZ3M+CiAgICAgICAgPGJpdCBwb3M9IjAiIHdpZHRoPSIyIiB0eXBlPSJjaG9pY2UiIGRlc2NyaXB0aW9uPSIiIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiA+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjAiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBsaXN0ZW4gbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjIiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgPC9iaXQ+CiAgICAgICAgPGJpdCBwb3M9IjIiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IHRoZSBkcml2ZXIgd2lsbCBub3Qgc3dpdGNoIHRvIFZTQ1AgbW9kZS4gVGhhdCBpcyBpdCBtdXN0IGJlIGluIFZTQ1AgbW9kZS4gT3BlbiB3aWxsIGJlIGZhc3Rlci4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSIzIiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCB0aGUgZHJpdmVyIHdpbGwgd2FpdCBmb3IgYW4gQUNLIGZyb20gdGhlIHBoeXNpY2FsIGRldmljZSBmb3IgZXZlcnkgc2VudCBmcmFtZS4gVGhpcyB3aWxsIHNsb3cgZG93biBzZW5kaW5nIGJ1dCBtYWtlIHRyYW5zbWlzc2lvbiBpdCB2ZXJ5IHNlY3VyZS4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSI0IiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCBlbmFibGUgdGltZXN0YW1wLiBUaGUgdGltZXN0YW1wIHdpbGwgYmUgd3JpdHRlbiBieSB0aGUgaGFyZHdhcmUgaW5zdGVhZCBvZiB0aGUgZHJpdmVyLiIgaW5mbz0iaHR0cDovL3d3dy52c2NwLm9yZy9kb2NzL3ZzY3BkL2Rva3UucGhwP2lkPWxldmVsMV9kcml2ZXJfY2FuNHZzY3AjZmxhZ3MiIC8+CiAgICAgICAgPGJpdCBwb3M9IjUiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IGVuYWJsZSBoYXJkd2FyZSBoYW5kc2hha2UuIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNmbGFncyIgLz4KICAgICAgICA8Yml0IHBvcz0iNiIgd2lkdGg9IjEiIHR5cGU9ImJvb2wiIGRlc2NyaXB0aW9uPSJJZiBzZXQgZW5hYmxlIHNvZnQgT3Blbi4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgPC9mbGFncz4KPC9jb25maWc+"
+#define DRIVERINFO "PD94bWwgdmVyc2lvbiA9ICIxLjAiIGVuY29kaW5nID0gIlVURi04IiA/Pgo8Y29uZmlnPgogICAgPGRlc2NyaXB0aW9uPkNBTjRWU0NQIHN0YW5kYXJkIHNlcmlhbCBkcml2ZXIuPC9kZXNjcmlwdGlvbj4KICAgIDxsZXZlbD4xPC9sZXZlbD4KICAgIDxibG9ja2luZz55ZXM8L2Jsb2NraW5nPgogICAgPGluZm8+aHR0cDovL2h0dHA6Ly93d3cuZ3JvZGFuc3BhcmFkaXMuY29tL2ZyYW5rZnVydC9yczIzMi9tYW51YWwvZG9rdS5waHA/aWQ9dGhlX2NhbjR2c2NwX21vZGU8L2luZm8+CiAgICA8aXRlbXM+CiAgICAgICAgPGl0ZW0gcG9zPSIwIiB0eXBlPSJzdHJpbmciIGRlc2NyaXB0aW9uPSJTZXJpYWwgcG9ydCAoY29tMSwgY29tMi4uLikiIGluZm89IiIgLz4KICAgICAgICA8aXRlbSBwb3M9IjEiIHR5cGU9ImNob2ljZSIgb3B0aW9uYWw9InRydWUiIGRlc2NyaXB0aW9uPSJCYXVkcmF0ZSBjb2RlIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNwYXJhbWV0ZXJfc3RyaW5nIj4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMCIgZGVzY3JpcHRpb24gPSAiMCAtIDExNTIwMCAoRGVmYXVsdCB2YWx1ZSkiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uID0gIjEgLSAxMjgwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uID0gIjIgLSAyMzA0MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjQiIGRlc2NyaXB0aW9uID0gIjMgLSAyNTYwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjUiIGRlc2NyaXB0aW9uID0gIjQgLSA0NjA4MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjYiIGRlc2NyaXB0aW9uID0gIjUgLSA1MDAwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjciIGRlc2NyaXB0aW9uID0gIjYgLSA2MjUwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjgiIGRlc2NyaXB0aW9uID0gIjcgLSA5MjE2MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjkiIGRlc2NyaXB0aW9uID0gIjggLSAxMDAwMDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIwIiBkZXNjcmlwdGlvbiA9ICI5IC0gOTYwMCIgLz4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMTAiIGRlc2NyaXB0aW9uID0gIjEwIC0gMTkyMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjExIiBkZXNjcmlwdGlvbiA9ICIxMSAtIDM4NDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIxMiIgZGVzY3JpcHRpb24gPSAiMTIgLSA1NzYwMCIgLz4KICAgICAgICA8L2l0ZW0+CiAgICA8L2l0ZW1zPgoJCiAgICA8ZmxhZ3M+CiAgICAgICAgPGJpdCBwb3M9IjAiIHdpZHRoPSIyIiB0eXBlPSJjaG9pY2UiIGRlc2NyaXB0aW9uPSIiIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiA+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjAiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBsaXN0ZW4gbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjIiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgPC9iaXQ+CiAgICAgICAgPGJpdCBwb3M9IjIiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IHRoZSBkcml2ZXIgd2lsbCBub3Qgc3dpdGNoIHRvIFZTQ1AgbW9kZS4gVGhhdCBpcyBpdCBtdXN0IGJlIGluIFZTQ1AgbW9kZS4gT3BlbiB3aWxsIGJlIGZhc3Rlci4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSIzIiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCB0aGUgZHJpdmVyIHdpbGwgd2FpdCBmb3IgYW4gQUNLIGZyb20gdGhlIHBoeXNpY2FsIGRldmljZSBmb3IgZXZlcnkgc2VudCBmcmFtZS4gVGhpcyB3aWxsIHNsb3cgZG93biBzZW5kaW5nIGJ1dCBtYWtlIHRyYW5zbWlzc2lvbiBpdCB2ZXJ5IHNlY3VyZS4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSI0IiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCBlbmFibGUgdGltZXN0YW1wLiBUaGUgdGltZXN0YW1wIHdpbGwgYmUgd3JpdHRlbiBieSB0aGUgaGFyZHdhcmUgaW5zdGVhZCBvZiB0aGUgZHJpdmVyLiIgaW5mbz0iaHR0cDovL3d3dy52c2NwLm9yZy9kb2NzL3ZzY3BkL2Rva3UucGhwP2lkPWxldmVsMV9kcml2ZXJfY2FuNHZzY3AjZmxhZ3MiIC8+CiAgICAgICAgPGJpdCBwb3M9IjUiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IGVuYWJsZSBoYXJkd2FyZSBoYW5kc2hha2UuIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNmbGFncyIgLz4KICAgICAgICA8Yml0IHBvcz0iNiIgd2lkdGg9IjEiIHR5cGU9ImJvb2wiIGRlc2NyaXB0aW9uPSJJZiBzZXQgZW5hYmxlIHNvZnQgT3Blbi4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgPC9mbGFncz4KPC9jb25maWc+"
 #else
-#define DRIVERINFO  "PD94bWwgdmVyc2lvbiA9ICIxLjAiIGVuY29kaW5nID0gIlVURi04IiA/Pgo8Y29uZmlnPgogICAgPGRlc2NyaXB0aW9uPkNBTjRWU0NQIHN0YW5kYXJkIHNlcmlhbCBkcml2ZXIuPC9kZXNjcmlwdGlvbj4KICAgIDxsZXZlbD4xPC9sZXZlbD4KICAgIDxibG9ja2luZz55ZXM8L2Jsb2NraW5nPgogICAgPGluZm8+aHR0cDovL2h0dHA6Ly93d3cuZ3JvZGFuc3BhcmFkaXMuY29tL2ZyYW5rZnVydC9yczIzMi9tYW51YWwvZG9rdS5waHA/aWQ9dGhlX2NhbjR2c2NwX21vZGU8L2luZm8+CiAgICA8aXRlbXM+CiAgICAgICAgPGl0ZW0gcG9zPSIwIiB0eXBlPSJzdHJpbmciIGRlc2NyaXB0aW9uPSJTZXJpYWwgcG9ydCAoL2Rldi90dHlTMCwgL2Rldi90dHlTMS4uLikiIGluZm89IiIgLz4KICAgICAgICA8aXRlbSBwb3M9IjEiIHR5cGU9ImNob2ljZSIgb3B0aW9uYWw9InRydWUiIGRlc2NyaXB0aW9uPSJCYXVkcmF0ZSBjb2RlIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNwYXJhbWV0ZXJfc3RyaW5nIj4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMCIgZGVzY3JpcHRpb24gPSAiMCAtIDExNTIwMCAoRGVmYXVsdCB2YWx1ZSkiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uID0gIjEgLSAxMjgwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uID0gIjIgLSAyMzA0MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjQiIGRlc2NyaXB0aW9uID0gIjMgLSAyNTYwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjUiIGRlc2NyaXB0aW9uID0gIjQgLSA0NjA4MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjYiIGRlc2NyaXB0aW9uID0gIjUgLSA1MDAwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjciIGRlc2NyaXB0aW9uID0gIjYgLSA2MjUwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjgiIGRlc2NyaXB0aW9uID0gIjcgLSA5MjE2MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjkiIGRlc2NyaXB0aW9uID0gIjggLSAxMDAwMDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIwIiBkZXNjcmlwdGlvbiA9ICI5IC0gOTYwMCIgLz4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMTAiIGRlc2NyaXB0aW9uID0gIjEwIC0gMTkyMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjExIiBkZXNjcmlwdGlvbiA9ICIxMSAtIDM4NDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIxMiIgZGVzY3JpcHRpb24gPSAiMTIgLSA1NzYwMCIgLz4KICAgICAgICA8L2l0ZW0+CiAgICA8L2l0ZW1zPgoJCiAgICA8ZmxhZ3M+CiAgICAgICAgPGJpdCBwb3M9IjAiIHdpZHRoPSIyIiB0eXBlPSJjaG9pY2UiIGRlc2NyaXB0aW9uPSIiIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiA+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjAiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBsaXN0ZW4gbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjIiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgPC9iaXQ+CiAgICAgICAgPGJpdCBwb3M9IjIiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IHRoZSBkcml2ZXIgd2lsbCBub3Qgc3dpdGNoIHRvIFZTQ1AgbW9kZS4gVGhhdCBpcyBpdCBtdXN0IGJlIGluIFZTQ1AgbW9kZS4gT3BlbiB3aWxsIGJlIGZhc3Rlci4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSIzIiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCB0aGUgZHJpdmVyIHdpbGwgd2FpdCBmb3IgYW4gQUNLIGZyb20gdGhlIHBoeXNpY2FsIGRldmljZSBmb3IgZXZlcnkgc2VudCBmcmFtZS4gVGhpcyB3aWxsIHNsb3cgZG93biBzZW5kaW5nIGJ1dCBtYWtlIHRyYW5zbWlzc2lvbiBpdCB2ZXJ5IHNlY3VyZS4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSI0IiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCBlbmFibGUgdGltZXN0YW1wLiBUaGUgdGltZXN0YW1wIHdpbGwgYmUgd3JpdHRlbiBieSB0aGUgaGFyZHdhcmUgaW5zdGVhZCBvZiB0aGUgZHJpdmVyLiIgaW5mbz0iaHR0cDovL3d3dy52c2NwLm9yZy9kb2NzL3ZzY3BkL2Rva3UucGhwP2lkPWxldmVsMV9kcml2ZXJfY2FuNHZzY3AjZmxhZ3MiIC8+CiAgICAgICAgPGJpdCBwb3M9IjUiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IGVuYWJsZSBoYXJkd2FyZSBoYW5kc2hha2UuIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNmbGFncyIgLz4KICAgICAgICA8Yml0IHBvcz0iNiIgd2lkdGg9IjEiIHR5cGU9ImJvb2wiIGRlc2NyaXB0aW9uPSJJZiBzZXQgZW5hYmxlIHNvZnQgT3Blbi4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgPC9mbGFncz4KPC9jb25maWc+"
+#define DRIVERINFO "PD94bWwgdmVyc2lvbiA9ICIxLjAiIGVuY29kaW5nID0gIlVURi04IiA/Pgo8Y29uZmlnPgogICAgPGRlc2NyaXB0aW9uPkNBTjRWU0NQIHN0YW5kYXJkIHNlcmlhbCBkcml2ZXIuPC9kZXNjcmlwdGlvbj4KICAgIDxsZXZlbD4xPC9sZXZlbD4KICAgIDxibG9ja2luZz55ZXM8L2Jsb2NraW5nPgogICAgPGluZm8+aHR0cDovL2h0dHA6Ly93d3cuZ3JvZGFuc3BhcmFkaXMuY29tL2ZyYW5rZnVydC9yczIzMi9tYW51YWwvZG9rdS5waHA/aWQ9dGhlX2NhbjR2c2NwX21vZGU8L2luZm8+CiAgICA8aXRlbXM+CiAgICAgICAgPGl0ZW0gcG9zPSIwIiB0eXBlPSJzdHJpbmciIGRlc2NyaXB0aW9uPSJTZXJpYWwgcG9ydCAoL2Rldi90dHlTMCwgL2Rldi90dHlTMS4uLikiIGluZm89IiIgLz4KICAgICAgICA8aXRlbSBwb3M9IjEiIHR5cGU9ImNob2ljZSIgb3B0aW9uYWw9InRydWUiIGRlc2NyaXB0aW9uPSJCYXVkcmF0ZSBjb2RlIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNwYXJhbWV0ZXJfc3RyaW5nIj4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMCIgZGVzY3JpcHRpb24gPSAiMCAtIDExNTIwMCAoRGVmYXVsdCB2YWx1ZSkiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uID0gIjEgLSAxMjgwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uID0gIjIgLSAyMzA0MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjQiIGRlc2NyaXB0aW9uID0gIjMgLSAyNTYwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjUiIGRlc2NyaXB0aW9uID0gIjQgLSA0NjA4MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjYiIGRlc2NyaXB0aW9uID0gIjUgLSA1MDAwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjciIGRlc2NyaXB0aW9uID0gIjYgLSA2MjUwMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjgiIGRlc2NyaXB0aW9uID0gIjcgLSA5MjE2MDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjkiIGRlc2NyaXB0aW9uID0gIjggLSAxMDAwMDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIwIiBkZXNjcmlwdGlvbiA9ICI5IC0gOTYwMCIgLz4KICAgICAgICAgICAgPGNob2ljZSB2YWx1ZT0iMTAiIGRlc2NyaXB0aW9uID0gIjEwIC0gMTkyMDAiIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjExIiBkZXNjcmlwdGlvbiA9ICIxMSAtIDM4NDAwIiAvPgogICAgICAgICAgICA8Y2hvaWNlIHZhbHVlPSIxMiIgZGVzY3JpcHRpb24gPSAiMTIgLSA1NzYwMCIgLz4KICAgICAgICA8L2l0ZW0+CiAgICA8L2l0ZW1zPgoJCiAgICA8ZmxhZ3M+CiAgICAgICAgPGJpdCBwb3M9IjAiIHdpZHRoPSIyIiB0eXBlPSJjaG9pY2UiIGRlc2NyaXB0aW9uPSIiIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiA+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjAiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjEiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBsaXN0ZW4gbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjIiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgICAgIDxjaG9pY2UgdmFsdWU9IjMiIGRlc2NyaXB0aW9uPSJPcGVuIENBTjRWU0NQIGludGVyZmFjZSBpbiBub3JtYWwgbW9kZS4iIC8+CiAgICAgICAgPC9iaXQ+CiAgICAgICAgPGJpdCBwb3M9IjIiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IHRoZSBkcml2ZXIgd2lsbCBub3Qgc3dpdGNoIHRvIFZTQ1AgbW9kZS4gVGhhdCBpcyBpdCBtdXN0IGJlIGluIFZTQ1AgbW9kZS4gT3BlbiB3aWxsIGJlIGZhc3Rlci4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSIzIiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCB0aGUgZHJpdmVyIHdpbGwgd2FpdCBmb3IgYW4gQUNLIGZyb20gdGhlIHBoeXNpY2FsIGRldmljZSBmb3IgZXZlcnkgc2VudCBmcmFtZS4gVGhpcyB3aWxsIHNsb3cgZG93biBzZW5kaW5nIGJ1dCBtYWtlIHRyYW5zbWlzc2lvbiBpdCB2ZXJ5IHNlY3VyZS4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgICAgIDxiaXQgcG9zPSI0IiB3aWR0aD0iMSIgdHlwZT0iYm9vbCIgZGVzY3JpcHRpb249IklmIHNldCBlbmFibGUgdGltZXN0YW1wLiBUaGUgdGltZXN0YW1wIHdpbGwgYmUgd3JpdHRlbiBieSB0aGUgaGFyZHdhcmUgaW5zdGVhZCBvZiB0aGUgZHJpdmVyLiIgaW5mbz0iaHR0cDovL3d3dy52c2NwLm9yZy9kb2NzL3ZzY3BkL2Rva3UucGhwP2lkPWxldmVsMV9kcml2ZXJfY2FuNHZzY3AjZmxhZ3MiIC8+CiAgICAgICAgPGJpdCBwb3M9IjUiIHdpZHRoPSIxIiB0eXBlPSJib29sIiBkZXNjcmlwdGlvbj0iSWYgc2V0IGVuYWJsZSBoYXJkd2FyZSBoYW5kc2hha2UuIiBpbmZvPSJodHRwOi8vd3d3LnZzY3Aub3JnL2RvY3MvdnNjcGQvZG9rdS5waHA/aWQ9bGV2ZWwxX2RyaXZlcl9jYW40dnNjcCNmbGFncyIgLz4KICAgICAgICA8Yml0IHBvcz0iNiIgd2lkdGg9IjEiIHR5cGU9ImJvb2wiIGRlc2NyaXB0aW9uPSJJZiBzZXQgZW5hYmxlIHNvZnQgT3Blbi4iIGluZm89Imh0dHA6Ly93d3cudnNjcC5vcmcvZG9jcy92c2NwZC9kb2t1LnBocD9pZD1sZXZlbDFfZHJpdmVyX2NhbjR2c2NwI2ZsYWdzIiAvPgogICAgPC9mbGFncz4KPC9jb25maWc+"
 #endif
 
-typedef struct {
-    bool bWaitingForAckNack;    // True if message is sent and waiting for ACK or NACK
-    bool bAck;                  // true if ACK is received, false if NACK
-    uint8_t seq;                // Sequency number for frame
-    uint8_t channel;            // Channel
+typedef struct
+{
+    bool bWaitingForAckNack; // True if message is sent and waiting for ACK or NACK
+    bool bAck;               // true if ACK is received, false if NACK
+    uint8_t seq;             // Sequency number for frame
+    uint8_t channel;         // Channel
 } msgResponseInfoStruct;
 
 //
 // The command response structure
 //
 
-typedef struct {
-    uint8_t op;                 // Operation == frametype
-    uint8_t seq;                // Sequency number
-    uint8_t channel;            // Channel
-    uint16_t sizePayload;       // Size of payload
-    uint8_t payload[ 512 ];     // Message payload
+typedef struct
+{
+    uint8_t op;           // Operation == frametype
+    uint8_t seq;          // Sequency number
+    uint8_t channel;      // Channel
+    uint16_t sizePayload; // Size of payload
+    uint8_t payload[512]; // Message payload
 } cmdResponseMsg;
 
-class CCan4VSCPObj {
+class CCan4VSCPObj
+{
 public:
-
     /// Constructor
     CCan4VSCPObj();
 
@@ -145,18 +147,15 @@ public:
      */
     bool doFilter(canalMsg *pcanalMsg);
 
-
     /*!
         Set Filter
      */
     int setFilter(unsigned long filter);
 
-
     /*!
         Set Mask
      */
     int setMask(unsigned long mask);
-
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
     /// The log file handle
@@ -171,7 +170,6 @@ public:
         @return True on success.
      */
     int open(const char *pConfig, unsigned long flags = 0);
-
 
     /*!
         Flush and close the log file
@@ -197,7 +195,6 @@ public:
      */
     int getStatistics(PCANALSTATISTICS pCanalStatistics);
 
-
     /*!
         Write a message out to the device (non blocking)
         @param pcanalMsg Pointer to CAN message
@@ -219,7 +216,6 @@ public:
      */
     int readMsg(canalMsg *pMsg);
 
-
     /*!
         Read a message from the device (Blocking)
         @param pcanalMsg Pointer to CAN message
@@ -227,7 +223,6 @@ public:
         @return CANAL return code. CANAL_ERROR_SUCCESS on success.
      */
     int readMsgBlocking(canalMsg *pMsg, uint32_t timeout);
-
 
     /*!
         Check for data availability
@@ -241,7 +236,8 @@ public:
      */
 #ifdef WIN32
 
-    HANDLE getReceiveHandle(void) {
+    HANDLE getReceiveHandle(void)
+    {
         return m_receiveDataEvent;
     }
 #endif
@@ -251,13 +247,13 @@ public:
         @param pCanalStatus Pointer to CANAL status structure
         @return True on success.
      */
-    int getStatus( PCANALSTATUS pCanalStatus );
+    int getStatus(PCANALSTATUS pCanalStatus);
 
     /*!
         Get device capabilities
         Device capabilities are set in member variables
      */
-    bool getDeviceCapabilities( void );
+    bool getDeviceCapabilities(void);
 
     /*!
         Send a command
@@ -267,10 +263,9 @@ public:
         @param dataSize Size for datablock
         @return True on success.
      */
-    bool sendCommand( uint8_t cmdcode,
-                        uint8_t *pParam = NULL,
-                        uint8_t size = 0 );
-
+    bool sendCommand(uint8_t cmdcode,
+                     uint8_t *pParam = NULL,
+                     uint8_t size = 0);
 
     /*!
         Wait for a command response message
@@ -281,10 +276,10 @@ public:
         @param timeout Timeout in milliseconds
         @return True on success
      */
-    bool wait4CommandResponse( cmdResponseMsg *pMsg,
-                                uint8_t cmdcode,
-                                uint8_t saveseq,
-                                uint32_t timeout );
+    bool wait4CommandResponse(cmdResponseMsg *pMsg,
+                              uint8_t cmdcode,
+                              uint8_t saveseq,
+                              uint32_t timeout);
 
     /*!
         Send command and wait for a response message
@@ -294,11 +289,11 @@ public:
         @param timeout Timeout in milliseconds
         @return True on success
      */
-    bool sendCommandWait( uint8_t cmdcode,
-                            uint8_t *pParam,
-                            uint8_t size,
-                            cmdResponseMsg *pMsg,
-                            uint32_t timeout );
+    bool sendCommandWait(uint8_t cmdcode,
+                         uint8_t *pParam,
+                         uint8_t size,
+                         cmdResponseMsg *pMsg,
+                         uint32_t timeout);
 
     /*!
         Sent a configuration parameter in the device
@@ -308,7 +303,7 @@ public:
         @param dataSize Size for datablock
         @return True on success.
     */
-    bool sendConfig( uint8_t codeConfig, uint8_t *pParam, uint8_t size );
+    bool sendConfig(uint8_t codeConfig, uint8_t *pParam, uint8_t size);
 
     /*!
         Wait for a configuration response message
@@ -319,7 +314,7 @@ public:
         @param timeout Timeout in milliseconds
         @return True on success
     */
-    bool wait4ConfigResponse( cmdResponseMsg *pMsg, uint8_t codeConfig, uint8_t saveseq, uint32_t timeout );
+    bool wait4ConfigResponse(cmdResponseMsg *pMsg, uint8_t codeConfig, uint8_t saveseq, uint32_t timeout);
 
     /*!
     Send command and wait for a response message
@@ -329,11 +324,11 @@ public:
     @param timeout Timeout in milliseconds
     @return True on success
     */
-    bool sendConfigWait( uint8_t codeConfig,
-                          uint8_t *pParam,
-                          uint8_t size,
-                          cmdResponseMsg *pMsg,
-                          uint32_t timeout );
+    bool sendConfigWait(uint8_t codeConfig,
+                        uint8_t *pParam,
+                        uint8_t size,
+                        cmdResponseMsg *pMsg,
+                        uint32_t timeout);
 
     /*!
         Send command on the serial channel
@@ -398,17 +393,18 @@ public:
 
     // Endiness functions
 
-    int little_endian() {
+    int little_endian()
+    {
         int x = 1;
-        return *(char*) &x;
+        return *(char *)&x;
     };
 
-    int big_endian() {
+    int big_endian()
+    {
         return !little_endian();
     };
 
 public:
-
     /// Run flag
     std::atomic<bool> m_bRun;
 
@@ -434,7 +430,6 @@ public:
         Interface statistics
      */
     canalStatistics m_stat;
-
 
     /*!
         Interface status
@@ -475,7 +470,6 @@ public:
      */
     canalStatus m_status;
 
-
     /*!
         Transmit queue
 
@@ -492,7 +486,6 @@ public:
      */
     DoubleLinkedList m_receiveList;
 
-
     /*!
         Response queue
 
@@ -500,13 +493,11 @@ public:
      */
     DoubleLinkedList m_responseList;
 
-
     /*!
         Holds info about the message that is in transmit and
         is awaiting a response from a remote board.
     */
     msgResponseInfoStruct msgResponseInfo;
-
 
     /*!
         Tread id Receive
@@ -536,15 +527,15 @@ public:
 #endif
 
 #ifdef WIN32
-    HANDLE m_receiveDataEvent;      // GS
-    HANDLE m_transmitDataPutEvent;  // GS
-    HANDLE m_transmitDataGetEvent;  // GS
-    HANDLE m_transmitAckNackEvent;  // Set when ACK/NACK is received for message
+    HANDLE m_receiveDataEvent;     // GS
+    HANDLE m_transmitDataPutEvent; // GS
+    HANDLE m_transmitDataGetEvent; // GS
+    HANDLE m_transmitAckNackEvent; // Set when ACK/NACK is received for message
 #else
     vscp_sem_t m_receiveDataSem;
     vscp_sem_t m_transmitDataPutSem;
     vscp_sem_t m_transmitDataGetSem;
-    vscp_sem_t m_transmitAckNackSem;     // Set when ACK/NACK is received for message
+    vscp_sem_t m_transmitAckNackSem; // Set when ACK/NACK is received for message
 #endif
 
     /*!
@@ -594,11 +585,9 @@ public:
      */
     uint32_t m_mask;
 
-
     ///////////////////////////////////////////////////////////////////////////
     //            * * * * *  CAN4VSCP specific * * * * *
     ///////////////////////////////////////////////////////////////////////////
-
 
     /*!
         flags
@@ -625,14 +614,12 @@ public:
     */
     bool m_bUdpDebug;
 
-
-
 #ifdef WIN32
     CComm m_com;
 #else
     Comm m_com;
 
-    /*! 
+    /*!
         The can4vscp object MUTEX
      */
     pthread_mutex_t m_can4vscpObjMutex;
@@ -644,7 +631,6 @@ public:
     */
     uint8_t m_nBaud;
 
-
     /*!
         State for incoming frames
      */
@@ -655,22 +641,20 @@ public:
      */
     int m_RxMsgSubState;
 
-
     /*!
         General receive buffer
      */
-    uint8_t m_bufferRx[ 0x10000 ];
+    uint8_t m_bufferRx[0x10000];
 
     /*!
         Message receive buffer
      */
-    uint8_t m_bufferMsgRcv[ 512 ];
+    uint8_t m_bufferMsgRcv[512];
 
     /*!
         Current length for received message
      */
     uint16_t m_lengthMsgRcv;
-
 
     /*!
         Sequency number

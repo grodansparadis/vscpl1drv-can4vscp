@@ -124,6 +124,44 @@ else()
     endif()
 endif()
 
+# Test application for the CCan4VSCPObj class (POSIX only, uses a pty
+# to emulate a CAN4VSCP adapter)
+option(BUILD_DRIVER_TESTS "Build the CCan4VSCPObj test application" ON)
+if(UNIX AND BUILD_DRIVER_TESTS)
+    enable_testing()
+
+    add_executable(test-can4vscpobj
+        tests/test-can4vscpobj.cpp
+        src/common/can4vscpobj.cpp
+        src/common/can4vscp-protocol.cpp
+        ${VSCP_COMMON_DIR}/crc8.c
+        ${VSCP_COMMON_DIR}/dllist.c
+        ${VSCP_COMMON_DIR}/com.cpp
+    )
+
+    target_include_directories(test-can4vscpobj
+        PRIVATE
+            ${DRIVER_SOURCE_DIR}/common
+            ${DRIVER_SOURCE_DIR}/linux
+            ${VSCP_COMMON_DIR}
+            ${VSCP_VSCP_COMMON_DIR}
+    )
+
+    target_compile_definitions(test-can4vscpobj PRIVATE _REENTRANT)
+
+    if(APPLE)
+        target_include_directories(test-can4vscpobj PRIVATE ${DRIVER_SOURCE_DIR}/compat)
+        target_compile_definitions(test-can4vscpobj PRIVATE TCFLSH=0 TIOCSERGETLSR=0)
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            set_source_files_properties(${VSCP_COMMON_DIR}/dllist.c PROPERTIES COMPILE_OPTIONS "-Wno-parentheses-equality")
+        endif()
+    endif()
+
+    target_link_libraries(test-can4vscpobj PRIVATE ${SPDLOG_TARGET} m pthread dl)
+
+    add_test(NAME can4vscpobj COMMAND test-can4vscpobj)
+endif()
+
 set(CPACK_PACKAGE_NAME "vscpl1drv-can4vscp")
 set(CPACK_PACKAGE_VENDOR "Grodans Paradis AB")
 set(CPACK_PACKAGE_CONTACT "Ake Hedman <akhe@grodansparadis.com>")

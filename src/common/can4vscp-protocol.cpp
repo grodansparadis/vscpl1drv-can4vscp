@@ -31,15 +31,19 @@
 // can4vscp_addWithEscape
 //
 
-uint8_t can4vscp_addWithEscape(uint8_t *p, uint8_t c, uint8_t *pcrc) {
-  if (DLE == c) {
+uint8_t can4vscp_addWithEscape(uint8_t *p, uint8_t c, uint8_t *pcrc)
+{
+  if (DLE == c)
+  {
     *p = DLE;
     if (NULL != pcrc)
       crc8(pcrc, DLE);
     *(p + 1) = DLE;
     // !!! CRC only calculated over one DLE !!!
     return 2;
-  } else {
+  }
+  else
+  {
     *p = c;
     if (NULL != pcrc)
       crc8(pcrc, c);
@@ -57,7 +61,8 @@ uint16_t can4vscp_buildFrame(uint8_t *pbuf,
                              uint8_t seq,
                              uint16_t declaredSizePayload,
                              const uint8_t *pPayload,
-                             uint16_t lenPayload) {
+                             uint16_t lenPayload)
+{
   uint8_t crc = 0;
   uint16_t pos = 0;
 
@@ -83,7 +88,8 @@ uint16_t can4vscp_buildFrame(uint8_t *pbuf,
                                 (uint8_t)(declaredSizePayload & 0xff), &crc);
 
   // Payload
-  for (uint16_t i = 0; i < lenPayload; i++) {
+  for (uint16_t i = 0; i < lenPayload; i++)
+  {
     pos += can4vscp_addWithEscape(pbuf + pos, pPayload[i], &crc);
   }
 
@@ -101,14 +107,17 @@ uint16_t can4vscp_buildFrame(uint8_t *pbuf,
 // can4vscp_checkCRC
 //
 
-int can4vscp_checkCRC(const uint8_t *pbuf, uint16_t len) {
+int can4vscp_checkCRC(const uint8_t *pbuf, uint16_t len)
+{
   uint8_t crc = 0;
 
-  if (0 == len) {
+  if (0 == len)
+  {
     return 0;
   }
 
-  for (uint16_t i = 0; i < (uint16_t)(len - 1); i++) {
+  for (uint16_t i = 0; i < (uint16_t)(len - 1); i++)
+  {
     crc8(&crc, pbuf[i]);
   }
 
