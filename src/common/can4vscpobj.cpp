@@ -2667,7 +2667,7 @@ CCan4VSCPObj::readSerialData(void)
       // CANAL message
       // -------------
       // [0]      DLE  - Not in buffer!!!!
-      // [1]      STX  - Not in bugger!!!!
+      // [1]      STX  - Not in buffer!!!!
       // [2]      Frame type (2 - CANAL message.) - First in buffer
       // [3]      Channel (always zero)
       // [4]      Sequence number
@@ -2775,39 +2775,39 @@ CCan4VSCPObj::readSerialData(void)
 #endif
       m_activity = getClockMilliSeconds(); // activity
 
-      // CANAL message
-      // -------------
-      // [0]      DLE  - Not in buffer!!!!
-      // [1]      STX  - Not in bugger!!!!
-      // [2]      Frame type (2 - CANAL message.) - First in buffer
-      // [3]      Channel (always zero)
-      // [4]      Sequence number
-      // [5/6]    Size of payload ( 5 + sizeData ) * number of frames
-      // ---------------------------------------------
-      // [7]      CAN id (MSB)
-      // [8]      CAN id
-      // [9]      CAN id
-      // [10]     CAN id (LSB)
-      // [11]     Timestamp (MSB)
-      // [12]     Timestamp
-      // [13]     Timestamp
-      // [14]     Timestamp (LSB)
-      // [15]     dlc
-      // [16-n]   CAN data (0-8 bytes)
-      // ---------------------------------------------
-      // [n+1]    Possible other CANAL frame
-      // ---------------------------------------------
-      // [len-3]  CRC
-      // [len-2]  DLE
-      // [len-1]  ETX
+      // CANAL message structure:
+      // [0]    - DLE  (Not in buffer)
+      // [1]    - STX  (Not in buffer)
+      // [2]    - Frame type (0x0C - Multi CANAL timestamped)
+      // [3/4]  - Size of payload: (9 + sizeData) * number of frames
+      // --- Payload frames ---
+      // [0..3] - CAN id (4 bytes)
+      // [4..7] - Timestamp (4 bytes)
+      // [8]    - dlc (Data length 0-8)
+      // [9..n] - CAN data (0-8 bytes)
+      // ----------------------
+      // [len-3]- CRC
+      // [len-2]- DLE
+      // [len-1]- ETX
 
-      // Payload size
+      // Get total payload size (Big-Endian from buffer bytes 3 and 4)
       long sizePayload = ((uint16_t) m_bufferMsgRcv[3] << 8) + m_bufferMsgRcv[4];
 
-      // Save pos for payload
+      // Save position for start of payload
       uint8_t *posFrame = m_bufferMsgRcv + 5;
 
       while (sizePayload > 0) {
+        uint8_t dataLen = posFrame[8];
+
+        // Guard: CAN data length cannot exceed 8 bytes
+        if (dataLen > 8) {
+          m_stat.cntOverruns++;
+          break; // Corrupt payload structure inside frame, abandon multi-frame parse
+        }
+
+        // Total byte length of this individual timestamped sub-frame in payload:
+        // 4 bytes ID + 4 bytes Timestamp + 1 byte DLC + dataLen
+        uint16_t frameSize = 9 + dataLen;
 
         if (m_receiveList.nCount < CAN4VSCP_MAX_RCVMSG) {
 
@@ -2817,21 +2817,22 @@ CCan4VSCPObj::readSerialData(void)
 
             pMsg->flags    = 0;
             dllnode *pNode = new dllnode;
+
             if (NULL != pNode) {
 
               pMsg->flags = 0;
               pMsg->obid  = 0;
 
+              // Extract 32-bit CAN ID
               pMsg->id = (((uint32_t) posFrame[0] << 24) & 0x1f000000) | (((uint32_t) posFrame[1] << 16) & 0x00ff0000) |
                          (((uint32_t) posFrame[2] << 8) & 0x0000ff00) | (((uint32_t) posFrame[3]) & 0x000000ff);
 
+              // Extract 32-bit Timestamp
               pMsg->timestamp = (((uint32_t) posFrame[4] << 24) & 0x1f000000) |
                                 (((uint32_t) posFrame[5] << 16) & 0x00ff0000) |
                                 (((uint32_t) posFrame[6] << 8) & 0x0000ff00) | (((uint32_t) posFrame[7]) & 0x000000ff);
 
-              pMsg->sizeData = posFrame[8];
-              if (pMsg->sizeData > 8)
-                pMsg->sizeData = 8; // Something is very wrong - Save the world
+              pMsg->sizeData = dataLen;
 
               if (pMsg->sizeData) {
                 memcpy((void *) pMsg->data, (posFrame + 9), pMsg->sizeData);
@@ -2861,10 +2862,6 @@ CCan4VSCPObj::readSerialData(void)
                 delete pNode;
               }
 
-              // Get ready for next payload frame
-              sizePayload -= (5 + posFrame[4]);
-              posFrame += (5 + posFrame[4]);
-
             } // No pNode
             else {
               delete pMsg;
@@ -2872,20 +2869,17 @@ CCan4VSCPObj::readSerialData(void)
 
           } // No pMsg
         }
-        // No room in receive queue
+        // Queue full (overflow condition)
         else {
-#ifdef DEBUG_CAN4VSCP_RECEIVE
-          DEBUG_RCV_PRINT("Overrun\n");
-#endif
-
-          // Full buffer
           m_stat.cntOverruns++;
-
-          // Get ready for next payload frame
-          sizePayload -= (5 + posFrame[4]);
-          posFrame += (5 + posFrame[4]);
         }
-      } // while
+
+        // Advance payload pointers REGARDLESS of whether the node was stored or dropped.
+        // Prevents hanging in an infinite loop when m_receiveList is full!
+        sizePayload -= frameSize;
+        posFrame += frameSize;
+
+      } // while (sizePayload > 0)
     }
     // Check for sent ACK frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_SENT_ACK == (m_bufferMsgRcv[0])) {
