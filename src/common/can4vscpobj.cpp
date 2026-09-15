@@ -596,7 +596,9 @@ CCan4VSCPObj::CCan4VSCPObj()
   m_transmitAckNackEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 #else
 
-  // m_flog = NULL;
+#ifdef DEBUG_CAN4VSCP_RECEIVE
+  m_flog = NULL;
+#endif
   pthread_mutex_init(&m_can4vscpMutex, NULL);
   pthread_mutex_init(&m_receiveMutex, NULL);
   pthread_mutex_init(&m_transmitMutex, NULL);
@@ -1132,11 +1134,14 @@ int CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       int cnt = 1;
       char c;
       std::string str;
-      while (-1 != cnt)
+      // read() returns 0 on EOF so loop only while data is delivered
+      while (cnt > 0)
       {
         c = m_com.readChar(&cnt);
-        // fprintf(stderr, "%c", c);
-        str += c;
+        if (cnt > 0)
+        {
+          str += c;
+        }
       }
 
       if (m_bDebug)
@@ -1420,7 +1425,11 @@ int CCan4VSCPObj::close(void)
   m_bOpen = false;
 
 #ifdef DEBUG_CAN4VSCP_RECEIVE
-  fclose(m_flog);
+  if (NULL != m_flog)
+  {
+    fclose(m_flog);
+    m_flog = NULL;
+  }
 #endif
 
   // Wake the worker threads so they can detect m_bRun == false

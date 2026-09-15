@@ -147,7 +147,7 @@ if(UNIX AND BUILD_DRIVER_TESTS)
             ${VSCP_VSCP_COMMON_DIR}
     )
 
-    target_compile_definitions(test-can4vscpobj PRIVATE _REENTRANT)
+    target_compile_definitions(test-can4vscpobj PRIVATE _REENTRANT DEBUG_CAN4VSCP_RECEIVE)
 
     if(APPLE)
         target_include_directories(test-can4vscpobj PRIVATE ${DRIVER_SOURCE_DIR}/compat)

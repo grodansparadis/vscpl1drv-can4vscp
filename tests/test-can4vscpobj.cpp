@@ -562,9 +562,11 @@ testLiveDriver()
 static volatile sig_atomic_t gAbort = 0;
 
 static void
-sigHandler(int)
+sigHandler(int sig)
 {
   gAbort = 1;
+  // A second Ctrl+C terminates immediately
+  signal(sig, SIG_DFL);
 }
 
 static int
@@ -573,10 +575,14 @@ liveStream(const char *pConfig, unsigned long flags, long maxFrames)
   printf("Live stream mode\n");
   printf("  config : %s\n", pConfig);
   printf("  flags  : 0x%08lX\n", flags);
-  printf("Press Ctrl+C to stop.\n\n");
+  printf("Press Ctrl+C to stop (twice to force quit).\n\n");
 
-  signal(SIGINT, sigHandler);
-  signal(SIGTERM, sigHandler);
+  // No SA_RESTART: blocking calls must return with EINTR on Ctrl+C
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = sigHandler;
+  sigaction(SIGINT, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL);
 
   CCan4VSCPObj obj;
 
@@ -594,8 +600,8 @@ liveStream(const char *pConfig, unsigned long flags, long maxFrames)
     memset(&msg, 0, sizeof(msg));
 
     const int rvRead = obj.readMsgBlocking(&msg, 500);
-    if (CANAL_ERROR_TIMEOUT == rvRead) {
-      continue;
+    if ((CANAL_ERROR_TIMEOUT == rvRead) || (CANAL_ERROR_FIFO_EMPTY == rvRead)) {
+      continue; // FIFO_EMPTY also happens when the wait is interrupted by Ctrl+C
     }
     if (CANAL_ERROR_SUCCESS != rvRead) {
       fprintf(stderr, "readMsgBlocking failed rv=%d\n", rvRead);
