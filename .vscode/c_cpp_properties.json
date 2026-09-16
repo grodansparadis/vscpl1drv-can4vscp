@@ -38,7 +38,8 @@
                 "${workspaceFolder}/src/common",
                 "${workspaceFolder}/src/linux",
                 "${workspaceFolder}/third-party/vscp/src/common",
-                "${workspaceFolder}/third-party/vscp/src/vscp/common"
+                "${workspaceFolder}/third-party/vscp/src/vscp/common",
+                "${workspaceFolder}/third-party/spdlog/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
