@@ -1102,6 +1102,9 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
         if (cnt > 0) {
           str += c;
         }
+        else if (cnt < 0) {
+          spdlog::error("Read char error [{}]", c);
+        }
       }
 
       spdlog::debug("[vscpl1drv-can4vscp] SET MODE VSCP response [{}]", str.c_str());
@@ -2233,8 +2236,39 @@ CCan4VSCPObj::serialData2StateMachine(void)
   if (cnt > 0) {
     spdlog::trace("cnt={:02X}", c);
   }
+  else if (cnt < 0) {
 
-  while (cnt > 0) { // Linux sets cnt ==-1 if no data
+    // errno is set to EAGAIN if no data is available, otherwise it indicates an error
+    spdlog::error("Read char error [{}] errno[{}]", c, errno);
+
+    switch (errno) {
+      case EAGAIN: // (== EWOULDBLOCK) no data right now, non-blocking mode
+        break;
+      case EINTR: // interrupted by signal, just retry
+        break;
+      case EIO: // device likely disconnected or faulted
+        spdlog::error("Serial I/O error — device may have disconnected\n");
+        // consider closing fd and attempting reopen
+        break;
+      case EPIPE:
+        spdlog::error("USB endpoint stall (ch341/USB-serial driver) — "
+                      "attempting device reset/reopen\n");
+        // typically: close fd, maybe trigger a USB reset via sysfs
+        // or unbind/rebind, then reopen the port
+        break;
+      case EBADF:
+        spdlog::error("Bad file descriptor — was it closed?\n");
+        break;
+      default:
+        spdlog::error("Unexpected read error: {}", strerror(errno));
+        break;
+    }
+
+    return false;
+  }
+
+  // Linux sets cnt ==-1 if no data, can be error code also
+  while (cnt > 0) {
 
     switch (m_RxMsgState) {
 
@@ -2325,6 +2359,36 @@ CCan4VSCPObj::serialData2StateMachine(void)
     if (cnt > 0) {
       spdlog::trace("Rcv={:02X}", c);
     }
+    else if (cnt < 0) {
+
+      // errno is set to EAGAIN if no data is available, otherwise it indicates an error
+      spdlog::error("Read char error [{}]", c);
+
+      switch (errno) {
+        case EAGAIN: // (== EWOULDBLOCK) no data right now, non-blocking mode
+          break;
+        case EINTR: // interrupted by signal, just retry
+          break;
+        case EIO: // device likely disconnected or faulted
+          spdlog::error("Serial I/O error — device may have disconnected\n");
+          // consider closing fd and attempting reopen
+          break;
+        case EPIPE:
+          spdlog::error("USB endpoint stall (ch341/USB-serial driver) — "
+                        "attempting device reset/reopen\n");
+          // typically: close fd, maybe trigger a USB reset via sysfs
+          // or unbind/rebind, then reopen the port
+          break;
+        case EBADF:
+          spdlog::error("Bad file descriptor — was it closed?\n");
+          break;
+        default:
+          spdlog::error("Unexpected read error: {}", strerror(errno));
+          break;
+      }
+
+      return false;
+    }
 
   } // while
 
@@ -2351,7 +2415,9 @@ CCan4VSCPObj::readSerialData(void)
 
     // Check CRC
     if (!checkCRC()) {
-      spdlog::trace(" CRC Failed! Operation={} payload={}", m_bufferMsgRcv[0], m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
+      spdlog::trace(" CRC Failed! Operation={} payload={}",
+                    m_bufferMsgRcv[0],
+                    m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
       for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]); g++) {
         spdlog::trace("{:02X}", m_bufferMsgRcv[5 + g]);
       }
