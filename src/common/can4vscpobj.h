@@ -269,8 +269,17 @@ public:
       do a logical open (in case no traffic is detected). This will keep
       the connection open even in this case where a restart of the host
       software otherwise was needed.
+
+      @return CANAL return code. CANAL_ERROR_SUCCESS on success.
   */
   int softOpen();
+
+  /*!
+      Open the serial interface for communication with the CAN4VSCP adapter.
+
+      @return CANAL return code. CANAL_ERROR_SUCCESS on success.
+  */
+  int OpenSerialInterface(void);
 
   /*!
       Get Interface statistics
@@ -470,6 +479,13 @@ public:
   int big_endian() { return !little_endian(); };
 
 private:
+
+  /*!
+      Check for signal events (e.g., SIGPIPE) using signalfd.
+      This function should be called regularly in the I/O loop.
+   */
+  void checkForSignalEvents(void);
+
   /*!
       Cleanup the object, remove all nodes from lists and destroy mutexes and semaphores.
 
@@ -700,7 +716,14 @@ public:
    */
   pthread_mutex_t m_can4vscpObjMutex;
 
+  int m_sfd;
+
 #endif
+
+  /*!
+      Serial device name for the CAN4VSCP interface
+   */
+  const char *m_pdeviceName;
 
   /*!
       Configured baudrate

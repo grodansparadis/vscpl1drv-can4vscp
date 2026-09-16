@@ -53,8 +53,47 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <iostream>
+#include <csignal>
+#ifdef WIN32
+#else
+#include <sys/signalfd.h>
+#include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
+
+#ifndef WIN32
+
+///////////////////////////////////////////////////////////////////////////////
+// handle_sigpipe
+//
+
+void
+handle_sigpipe(int sig)
+{
+  // Keep signal handlers lightweight and async-signal-safe
+  const char msg[] = "Caught SIGPIPE: Pipe or file descriptor closed!\n";
+  write(STDERR_FILENO, msg, sizeof(msg) - 1);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// setup_signal_handler
+//
+
+void
+setup_signal_handler()
+{
+  struct sigaction sa;
+  sa.sa_handler = handle_sigpipe;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+
+  if (sigaction(SIGPIPE, &sa, NULL) < 0) {
+    perror("sigaction");
+  }
+}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // get_log_file_path
@@ -530,6 +569,8 @@ CCan4VSCPObj::CCan4VSCPObj()
 
 #ifdef WIN32
 
+  m_pdeviceName = "COM1";   // Set default device name
+
   m_hTreadReceive  = 0;
   m_hTreadTransmit = 0;
 
@@ -552,7 +593,10 @@ CCan4VSCPObj::CCan4VSCPObj()
   m_transmitDataPutEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
   m_transmitDataGetEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
   m_transmitAckNackEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
 #else
+
+  m_pdeviceName = "/dev/ttyUSB0";   // Set default device name
 
   pthread_mutex_init(&m_can4vscpMutex, NULL);
   pthread_mutex_init(&m_receiveMutex, NULL);
@@ -570,6 +614,17 @@ CCan4VSCPObj::CCan4VSCPObj()
   dll_init(&m_transmitList, SORT_NONE);
   dll_init(&m_receiveList, SORT_NONE);
   dll_init(&m_responseList, SORT_NONE);
+
+  // SIGPIPE handling via signalfd
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGPIPE);
+
+  // Block SIGPIPE from executing the default process handler
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
+
+  // Create a file descriptor that receives SIGPIPE events
+  m_sfd = signalfd(-1, &mask, SFD_NONBLOCK);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -582,7 +637,32 @@ CCan4VSCPObj::~CCan4VSCPObj()
     close();
   }
 
+  // Close the signal file descriptor if it was created
+  if (m_sfd >= 0) {
+    ::close(m_sfd);
+  }
+
   cleanup();
+}
+
+//////////////////////////////////////////////////////////////////////
+// checkForSignalEvents
+//
+// Regular instance method called during your I/O loop
+//
+
+void
+CCan4VSCPObj::checkForSignalEvents()
+{
+  struct signalfd_siginfo fdsi;
+  ssize_t s = read(m_sfd, &fdsi, sizeof(fdsi));
+
+  if (s == sizeof(fdsi)) {
+    if (fdsi.ssi_signo == SIGPIPE) {
+      // Safely handle SIGPIPE inside your class method!
+      spdlog::critical("SIGPIPE received via signalfd in class method!\n");
+    }
+  }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -732,19 +812,8 @@ CCan4VSCPObj::cleanup()
 int
 CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 {
-#ifdef WIN32
-  int nComPort = 1; // COM1 is default
-
-  char szDrvParams[MAX_PATH];
-  DWORD baud = 115200;
-#else
-  char szDrvParams[PATH_MAX];
-  char *pDeviceName = (char *) "/dev/ttyUSB0";
-  char szBaud[PATH_MAX];
-
-  strcpy(szBaud, "115200");
-#endif
-  char *p;
+  char szDrvParams[PATH_MAX] = {0}; // Driver config string
+  char *p = NULL;
 
   cmdResponseMsg Msg;
   m_nBaud    = SET_BAUDRATE_115200;
@@ -764,13 +833,13 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   m_RxMsgState    = INCOMING_STATE_NONE;
   m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
 
-  // Save configuration string and convert to upper case
+  // Save configuration string & set default values
 #ifdef WIN32
   if (NULL != pConfig) {
     strncpy(szDrvParams, pConfig, MAX_PATH);
   }
   else {
-    strncpy(szDrvParams, "COM1", MAX_PATH); // Use default port
+    strncpy(szDrvParams, "COM1;0", MAX_PATH); // Use default port
   }
   strupr(szDrvParams);
 #else
@@ -778,7 +847,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
     strncpy(szDrvParams, pConfig, PATH_MAX);
   }
   else {
-    strncpy(szDrvParams, "/dev/ttyUSB0", PATH_MAX); // Use default port
+    strncpy(szDrvParams, "/dev/ttyUSB0;0", PATH_MAX); // Use default port
   }
 #endif
 
@@ -809,7 +878,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       nComPort = atoi(p + 3);
     }
 #else
-    pDeviceName = p;
+    m_pdeviceName = p;
 #endif
   }
 
@@ -907,157 +976,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
     std::printf("Log initialization failed: %s\n", ex.what());
   }
 
-#ifdef WIN32
-  switch (m_nBaud) {
-
-    case SET_BAUDRATE_128000:
-      baud = 128000;
-      break;
-
-    case SET_BAUDRATE_230400:
-      baud = 230400;
-      break;
-
-    case SET_BAUDRATE_256000:
-      baud = 256000;
-      break;
-
-    case SET_BAUDRATE_460800:
-      baud = 460800;
-      break;
-
-    case SET_BAUDRATE_500000:
-      baud = 500000;
-      break;
-
-    case SET_BAUDRATE_625000:
-      baud = 625000;
-      break;
-
-    case SET_BAUDRATE_921600:
-      baud = 921600;
-      break;
-
-    case SET_BAUDRATE_1000000:
-      baud = 1000000;
-      break;
-
-    case SET_BAUDRATE_9600:
-      baud = 9600;
-      break;
-
-    case SET_BAUDRATE_19200:
-      baud = 19200;
-      break;
-
-    case SET_BAUDRATE_38400:
-      baud = 38400;
-      break;
-
-    case SET_BAUDRATE_57600:
-      baud = 57600;
-      break;
-
-    case SET_BAUDRATE_115200:
-    default:
-      baud = 115200;
-      break;
-  }
-#else
-  switch (m_nBaud) {
-
-    case SET_BAUDRATE_128000:
-      strcpy(szBaud, "128000");
-      break;
-
-    case SET_BAUDRATE_230400:
-      strcpy(szBaud, "230400");
-      break;
-
-    case SET_BAUDRATE_256000:
-      strcpy(szBaud, "256000");
-      break;
-
-    case SET_BAUDRATE_460800:
-      strcpy(szBaud, "460800");
-      break;
-
-    case SET_BAUDRATE_500000:
-      strcpy(szBaud, "500000");
-      break;
-
-    case SET_BAUDRATE_625000:
-      strcpy(szBaud, "625000");
-      break;
-
-    case SET_BAUDRATE_921600:
-      strcpy(szBaud, "921600");
-      break;
-
-    case SET_BAUDRATE_1000000:
-      strcpy(szBaud, "1000000");
-      break;
-
-    case SET_BAUDRATE_9600:
-      strcpy(szBaud, "9600");
-      break;
-
-    case SET_BAUDRATE_19200:
-      strcpy(szBaud, "19200");
-      break;
-
-    case SET_BAUDRATE_38400:
-      strcpy(szBaud, "38400");
-      break;
-
-    case SET_BAUDRATE_57600:
-      strcpy(szBaud, "57600");
-      break;
-
-    case SET_BAUDRATE_115200:
-    default:
-      strcpy(szBaud, "115200");
-      break;
-  }
-#endif
-
-    // Open the com port
-#ifdef WIN32
-  if (!m_com.init(nComPort,
-                  CBR_115200,
-                  8,
-                  NOPARITY,
-                  ONESTOPBIT,
-                  (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE) ? HANDSHAKE_HARDWARE : HANDSHAKE_NONE)) {
-    return CANAL_ERROR_INIT_FAIL;
-  }
-#else
-
-  // if open we have noting to do
-  if (0 != m_com.getFD()) {
-    spdlog::error("[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
-    return 0;
-  }
-
-  //----------------------------------------------------------------------
-  // Open Serial Port
-  //----------------------------------------------------------------------
-  if (!m_com.open(pDeviceName)) {
-    spdlog::error("[vscpl1drv-can4vscp] Open [{}] failed", pDeviceName);
-    return CANAL_ERROR_INIT_FAIL;
-  }
-
-  spdlog::debug("[vscpl1drv-can4vscp] Open of port [{}] successful", pDeviceName);
-
-  //----------------------------------------------------------------------
-  // Com::setParam( char *baud, char *parity, char *bits, int HWFlow, int SWFlow
-  // )
-  //----------------------------------------------------------------------
-  m_com.setParam((char *) "115200",
-                 (char *) "N",
-                 (char *) "8",
-                 (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE) ? 1 : 0,
-                 0);
+  OpenSerialInterface();
 
   //----------------------------------------------------------------------
   //
@@ -1074,8 +993,6 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   m_stat.cntBusOff      = 0;
   m_stat.cntBusWarnings = 0;
   m_stat.cntOverruns    = 0;
-
-#endif
 
   // Set CAN4VSCP mode in case of device in verbose mode
   if (!(m_initFlag & CAN4VSCP_FLAG_ENABLE_NO_SWITCH_TO_NEW_MODE)) {
@@ -1461,6 +1378,182 @@ CCan4VSCPObj::softOpen()
       }
       break;
   }
+
+  return CANAL_ERROR_SUCCESS;
+}
+
+//////////////////////////////////////////////////////////////////////
+// OpenSerialInterface
+//
+
+int
+CCan4VSCPObj::OpenSerialInterface(void)
+{
+  char szDrvParams[PATH_MAX];
+
+#ifdef WIN32
+  int nComPort = 1; // COM1 is default
+  char szDrvParams[MAX_PATH];
+  DWORD baud = 115200;
+#else
+  char *pDeviceName = (char *) "/dev/ttyUSB0";
+  char szBaud[PATH_MAX];
+  strcpy(szBaud, "115200");
+#endif
+
+#ifdef WIN32
+  switch (m_nBaud) {
+
+    case SET_BAUDRATE_128000:
+      baud = 128000;
+      break;
+
+    case SET_BAUDRATE_230400:
+      baud = 230400;
+      break;
+
+    case SET_BAUDRATE_256000:
+      baud = 256000;
+      break;
+
+    case SET_BAUDRATE_460800:
+      baud = 460800;
+      break;
+
+    case SET_BAUDRATE_500000:
+      baud = 500000;
+      break;
+
+    case SET_BAUDRATE_625000:
+      baud = 625000;
+      break;
+
+    case SET_BAUDRATE_921600:
+      baud = 921600;
+      break;
+
+    case SET_BAUDRATE_1000000:
+      baud = 1000000;
+      break;
+
+    case SET_BAUDRATE_9600:
+      baud = 9600;
+      break;
+
+    case SET_BAUDRATE_19200:
+      baud = 19200;
+      break;
+
+    case SET_BAUDRATE_38400:
+      baud = 38400;
+      break;
+
+    case SET_BAUDRATE_57600:
+      baud = 57600;
+      break;
+
+    case SET_BAUDRATE_115200:
+    default:
+      baud = 115200;
+      break;
+  }
+#else
+  switch (m_nBaud) {
+
+    case SET_BAUDRATE_128000:
+      strcpy(szBaud, "128000");
+      break;
+
+    case SET_BAUDRATE_230400:
+      strcpy(szBaud, "230400");
+      break;
+
+    case SET_BAUDRATE_256000:
+      strcpy(szBaud, "256000");
+      break;
+
+    case SET_BAUDRATE_460800:
+      strcpy(szBaud, "460800");
+      break;
+
+    case SET_BAUDRATE_500000:
+      strcpy(szBaud, "500000");
+      break;
+
+    case SET_BAUDRATE_625000:
+      strcpy(szBaud, "625000");
+      break;
+
+    case SET_BAUDRATE_921600:
+      strcpy(szBaud, "921600");
+      break;
+
+    case SET_BAUDRATE_1000000:
+      strcpy(szBaud, "1000000");
+      break;
+
+    case SET_BAUDRATE_9600:
+      strcpy(szBaud, "9600");
+      break;
+
+    case SET_BAUDRATE_19200:
+      strcpy(szBaud, "19200");
+      break;
+
+    case SET_BAUDRATE_38400:
+      strcpy(szBaud, "38400");
+      break;
+
+    case SET_BAUDRATE_57600:
+      strcpy(szBaud, "57600");
+      break;
+
+    case SET_BAUDRATE_115200:
+    default:
+      strcpy(szBaud, "115200");
+      break;
+  }
+#endif
+
+    // Open the com port
+#ifdef WIN32
+  if (!m_com.init(nComPort,
+                  CBR_115200,
+                  8,
+                  NOPARITY,
+                  ONESTOPBIT,
+                  (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE) ? HANDSHAKE_HARDWARE : HANDSHAKE_NONE)) {
+    return CANAL_ERROR_INIT_FAIL;
+  }
+#else
+
+  // if open we have noting to do
+  if (0 != m_com.getFD()) {
+    spdlog::error("[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
+    return CANAL_ERROR_SUCCESS;
+  }
+
+  //----------------------------------------------------------------------
+  // Open Serial Port
+  //----------------------------------------------------------------------
+  if (!m_com.open(pDeviceName)) {
+    spdlog::error("[vscpl1drv-can4vscp] Open [{}] failed", pDeviceName);
+    return CANAL_ERROR_INIT_FAIL;
+  }
+
+  spdlog::debug("[vscpl1drv-can4vscp] Open of port [{}] successful", pDeviceName);
+
+  //----------------------------------------------------------------------
+  // Com::setParam( char *baud, char *parity, char *bits, int HWFlow, int SWFlow
+  // )
+  //----------------------------------------------------------------------
+  m_com.setParam((char *) "115200",
+                 (char *) "N",
+                 (char *) "8",
+                 (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE) ? 1 : 0,
+                 0);
+
+#endif // Windows/Linux
 
   return CANAL_ERROR_SUCCESS;
 }
@@ -2231,6 +2324,8 @@ CCan4VSCPObj::serialData2StateMachine(void)
   uint8_t c; // Serial character
   int cnt = 0;
 
+  checkForSignalEvents();
+
   // Read RS-232 data
   c = m_com.readChar(&cnt);
   if (cnt > 0) {
@@ -2238,27 +2333,35 @@ CCan4VSCPObj::serialData2StateMachine(void)
   }
   else if (cnt < 0) {
 
+    if (errno == EAGAIN) {
+      // No data available, non-blocking mode
+      return false;
+    }
+
     // errno is set to EAGAIN if no data is available, otherwise it indicates an error
     spdlog::error("Read char error [{}] errno[{}]", c, errno);
 
     switch (errno) {
-      case EAGAIN: // (== EWOULDBLOCK) no data right now, non-blocking mode
-        break;
+
       case EINTR: // interrupted by signal, just retry
         break;
+
       case EIO: // device likely disconnected or faulted
         spdlog::error("Serial I/O error — device may have disconnected\n");
         // consider closing fd and attempting reopen
         break;
+
       case EPIPE:
         spdlog::error("USB endpoint stall (ch341/USB-serial driver) — "
                       "attempting device reset/reopen\n");
         // typically: close fd, maybe trigger a USB reset via sysfs
         // or unbind/rebind, then reopen the port
         break;
+
       case EBADF:
         spdlog::error("Bad file descriptor — was it closed?\n");
         break;
+
       default:
         spdlog::error("Unexpected read error: {}", strerror(errno));
         break;
@@ -2361,27 +2464,35 @@ CCan4VSCPObj::serialData2StateMachine(void)
     }
     else if (cnt < 0) {
 
+      if (errno == EAGAIN) {
+        // No data available, non-blocking mode
+        return false;
+      }
+
       // errno is set to EAGAIN if no data is available, otherwise it indicates an error
       spdlog::error("Read char error [{}]", c);
 
       switch (errno) {
-        case EAGAIN: // (== EWOULDBLOCK) no data right now, non-blocking mode
-          break;
+
         case EINTR: // interrupted by signal, just retry
           break;
+
         case EIO: // device likely disconnected or faulted
           spdlog::error("Serial I/O error — device may have disconnected\n");
           // consider closing fd and attempting reopen
           break;
+
         case EPIPE:
           spdlog::error("USB endpoint stall (ch341/USB-serial driver) — "
                         "attempting device reset/reopen\n");
           // typically: close fd, maybe trigger a USB reset via sysfs
           // or unbind/rebind, then reopen the port
           break;
+
         case EBADF:
           spdlog::error("Bad file descriptor — was it closed?\n");
           break;
+
         default:
           spdlog::error("Unexpected read error: {}", strerror(errno));
           break;

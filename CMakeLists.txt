@@ -65,7 +65,7 @@ if(WIN32)
 else()
     list(APPEND DRIVER_SOURCES
         src/linux/vscpl1drv-can4vscp.cpp
-        ${VSCP_COMMON_DIR}/com.cpp
+        ${VSCP_COMMON_DIR}/com-linux.cpp
     )
 endif()
 
@@ -136,7 +136,7 @@ if(UNIX AND BUILD_DRIVER_TESTS)
         src/common/can4vscp-protocol.cpp
         ${VSCP_COMMON_DIR}/crc8.c
         ${VSCP_COMMON_DIR}/dllist.c
-        ${VSCP_COMMON_DIR}/com.cpp
+        ${VSCP_COMMON_DIR}/com-linux.cpp
     )
 
     target_include_directories(test-can4vscpobj
