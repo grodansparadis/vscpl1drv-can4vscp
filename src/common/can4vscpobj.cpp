@@ -747,8 +747,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   char *p;
 
   cmdResponseMsg Msg;
-  m_nBaud = SET_BAUDRATE_115200;
-  // uint8_t saveseq;
+  m_nBaud    = SET_BAUDRATE_115200;
   m_initFlag = flags;
 
   // Enable strict mode if asked to
@@ -781,13 +780,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   else {
     strncpy(szDrvParams, "/dev/ttyUSB0", PATH_MAX); // Use default port
   }
-  // Make upper case
-  p = szDrvParams;
 #endif
-
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Open driver %s 0x%lX", pConfig, flags);
-  }
 
   // Initiate statistics
   m_stat.cntReceiveData    = 0;
@@ -849,9 +842,6 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   p = nextConfigToken(&pCursor);
 #ifndef WIN32
   gSyslogLevel = parseLogLevel(p);
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Syslog level set to '{}'", spdlog::level::to_string_view(gSyslogLevel).data());
-  }
 #endif
 
   /*!
@@ -895,7 +885,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       spdlog::set_default_logger(multi_logger);
 
       // Set global log level
-      spdlog::set_level(spdlog::level::trace);
+      spdlog::set_level(gSyslogLevel);
       spdlog::flush_on(spdlog::level::info);
 
       // Test log messages
@@ -910,8 +900,6 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 
       // Set it as default (spdlog::info calls will now go to /dev/null)
       spdlog::set_default_logger(null_logger);
-
-      spdlog::info("This message goes nowhere!"); // Discarded
     }
   }
   catch (const spdlog::spdlog_ex &ex) {
@@ -1059,9 +1047,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
     return CANAL_ERROR_INIT_FAIL;
   }
 
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Open of port [{}] successful", pDeviceName);
-  }
+  spdlog::debug("[vscpl1drv-can4vscp] Open of port [{}] successful", pDeviceName);
 
   //----------------------------------------------------------------------
   // Com::setParam( char *baud, char *parity, char *bits, int HWFlow, int SWFlow
@@ -1118,9 +1104,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
         }
       }
 
-      if (m_bDebug) {
-        spdlog::debug("[vscpl1drv-can4vscp] SET MODE VSCP response [{}]", str.c_str());
-      }
+      spdlog::debug("[vscpl1drv-can4vscp] SET MODE VSCP response [{}]", str.c_str());
     }
 
 #endif
@@ -2247,7 +2231,7 @@ CCan4VSCPObj::serialData2StateMachine(void)
   // Read RS-232 data
   c = m_com.readChar(&cnt);
   if (cnt > 0) {
-    spdlog::trace("cnt=%02X \n", c);
+    spdlog::trace("cnt={:02X}", c);
   }
 
   while (cnt > 0) { // Linux sets cnt ==-1 if no data
@@ -2258,17 +2242,17 @@ CCan4VSCPObj::serialData2StateMachine(void)
       case INCOMING_STATE_NONE:
 
         if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c)) {
-          spdlog::trace(" STATE_NONE/SUBSATE_DLE \n");
+          spdlog::trace("STATE_NONE/SUBSATE_DLE");
           m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
         }
         else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c)) {
-          spdlog::trace(" STATE_STX/SUBSATE_NONE ");
+          spdlog::trace("STATE_STX/SUBSATE_NONE");
           m_RxMsgState    = INCOMING_STATE_STX;
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
           m_lengthMsgRcv  = 0;
         }
         else {
-          spdlog::trace(" STATE_NONE/SUBSATE_NONE \n");
+          spdlog::trace("STATE_NONE/SUBSATE_NONE");
           m_lengthMsgRcv  = 0;
           m_RxMsgState    = INCOMING_STATE_NONE;
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
@@ -2279,13 +2263,13 @@ CCan4VSCPObj::serialData2StateMachine(void)
       case INCOMING_STATE_STX:
 
         if ((INCOMING_SUBSTATE_NONE == m_RxMsgSubState) && (DLE == c)) {
-          spdlog::trace(" STATE_STX/SUBSTATE_DLE \n");
+          spdlog::trace("STATE_STX/SUBSTATE_DLE");
           m_RxMsgSubState = INCOMING_SUBSTATE_DLE;
         }
         else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (STX == c)) {
           // This is strange as a DEL STX is not expected here
           // We try to sync up again...
-          spdlog::trace(" STATE_STX/SUBSTATE_NONE \n");
+          spdlog::trace("STATE_STX/SUBSTATE_NONE");
           m_RxMsgState    = INCOMING_STATE_STX;
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
           m_lengthMsgRcv  = 0;
@@ -2293,7 +2277,7 @@ CCan4VSCPObj::serialData2StateMachine(void)
         else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (ETX == c)) {
 
           // We have a packet
-          spdlog::trace(" STATE_NONE/SUBSTATE_NONE\n");
+          spdlog::trace("STATE_NONE/SUBSTATE_NONE");
           m_RxMsgState    = INCOMING_STATE_NONE;
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
           spdlog::trace(" ***FRAME*** \n");
@@ -2301,7 +2285,7 @@ CCan4VSCPObj::serialData2StateMachine(void)
         }
         else if ((INCOMING_SUBSTATE_DLE == m_RxMsgSubState) && (DLE == c)) {
           // Byte stuffed DLE  i.e. DLE DLE == DLE
-          spdlog::trace(" STATE_STX/SUBSTATE_NONE\n");
+          spdlog::trace("STATE_STX/SUBSTATE_NONE");
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
           if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv)) {
             m_bufferMsgRcv[m_lengthMsgRcv++] = c;
@@ -2309,14 +2293,14 @@ CCan4VSCPObj::serialData2StateMachine(void)
           else {
             // This packet has wrong format as it have
             // to many databytes - start all over!
-            spdlog::trace(" STATE_NONE/SUBSTATE_NONE\n");
+            spdlog::trace("STATE_NONE/SUBSTATE_NONE");
             m_lengthMsgRcv  = 0;
             m_RxMsgState    = INCOMING_STATE_NONE;
             m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
           }
         } // We come here if data is received
         else {
-          spdlog::trace(" STATE_STX/SUBSTATE_NONE\n ");
+          spdlog::trace("STATE_STX/SUBSTATE_NONE");
           m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
           if (m_lengthMsgRcv < sizeof(m_bufferMsgRcv)) {
             m_bufferMsgRcv[m_lengthMsgRcv++] = c;
@@ -2325,7 +2309,7 @@ CCan4VSCPObj::serialData2StateMachine(void)
             // This packet has wrong format as it have
             // to many databytes - start over!
             m_lengthMsgRcv = 0;
-            spdlog::trace(" STATE_NONE/SUBSTATE_NONE\n ");
+            spdlog::trace("STATE_NONE/SUBSTATE_NONE");
             m_RxMsgState    = INCOMING_STATE_NONE;
             m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
           }
@@ -2339,7 +2323,7 @@ CCan4VSCPObj::serialData2StateMachine(void)
     // Read RS-232 data
     c = m_com.readChar(&cnt);
     if (cnt > 0) {
-      spdlog::trace("Rcv=%02X\n", c);
+      spdlog::trace("Rcv={:02X}", c);
     }
 
   } // while
@@ -2358,31 +2342,28 @@ CCan4VSCPObj::readSerialData(void)
 
   if (serialData2StateMachine()) {
 
-    spdlog::trace(" OPERATION\n");
-    spdlog::trace(" Operation=%d payload=%d\n", m_bufferMsgRcv[0], m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
+    spdlog::trace("OP Operation={} payload={}", m_bufferMsgRcv[0], m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
     for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]); g++) {
-      spdlog::trace(" %02X", m_bufferMsgRcv[5 + g]);
+      spdlog::trace("{:02X}", m_bufferMsgRcv[5 + g]);
     }
 
-    spdlog::trace("CRC check\n");
+    spdlog::trace("CRC check");
 
     // Check CRC
     if (!checkCRC()) {
-      spdlog::trace(" CRC Failed!\n");
-      spdlog::trace(" Operation=%d payload=%d\n", m_bufferMsgRcv[0], m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
+      spdlog::trace(" CRC Failed! Operation={} payload={}", m_bufferMsgRcv[0], m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]);
       for (int g = 0; g < (m_bufferMsgRcv[3] * 256 + m_bufferMsgRcv[4]); g++) {
-        spdlog::trace(" %02X", m_bufferMsgRcv[5 + g]);
+        spdlog::trace("{:02X}", m_bufferMsgRcv[5 + g]);
       }
-      spdlog::trace("\n");
       return;
     }
 
-    spdlog::trace("CRC check OK\n");
+    spdlog::trace("CRC check OK");
 
     // Check if NOOP frame
     if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NOOP == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("NOOP farme\n");
+      spdlog::trace("NOOP frame");
 
       m_activity = getClockMilliSeconds(); // activity
       sendACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]);
@@ -2390,7 +2371,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for CANAL message frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("CANAL message frame\n");
+      spdlog::trace("CANAL message frame");
 
       m_activity = getClockMilliSeconds(); // activity
 
@@ -2488,7 +2469,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for CANAL message frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CANAL_TIMESTAMP == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Timestamped CANAL message frame\n");
+      spdlog::trace("Timestamped CANAL message frame");
       m_activity = getClockMilliSeconds(); // activity
 
       // CANAL message
@@ -2584,7 +2565,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for VSCP event frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("VSCP event frame\n");
+      spdlog::trace("VSCP event frame");
 
       m_activity = getClockMilliSeconds();                             // activity
       sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
@@ -2593,7 +2574,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for VSCP event frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_VSCP_EVENT_TIMESTAMP == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("VSCP event frame with timestamp\n");
+      spdlog::trace("VSCP event frame with timestamp");
 #
       m_activity = getClockMilliSeconds();                             // activity
       sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
@@ -2602,7 +2583,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for configure frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CONFIGURE == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Configure frame\n");
+      spdlog::trace("Configure frame");
 
       m_activity = getClockMilliSeconds();                             // activity
       sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
@@ -2612,7 +2593,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for poll frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_POLL == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Poll frame\n");
+      spdlog::trace("Poll frame");
 
       m_activity = getClockMilliSeconds();                             // activity
       sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
@@ -2622,7 +2603,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for no event frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NO_EVENT == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("No event frame\n");
+      spdlog::trace("No event frame");
 
       m_activity = getClockMilliSeconds();                             // activity
       sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't
@@ -2632,7 +2613,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for multiframe VSCP message frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Multiframe VSCP message frame\n");
+      spdlog::trace("Multiframe VSCP message frame");
 
       m_activity = getClockMilliSeconds();                             // activity
       sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
@@ -2641,7 +2622,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for multiframe VSCP message frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_VSCP_TIMESTAMP == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Multiframe VSCP message frame with timestamp\n");
+      spdlog::trace("Multiframe VSCP message frame with timestamp");
 
       m_activity = getClockMilliSeconds();                             // activity
       sendNACK(m_bufferMsgRcv[VSCP_SERIAL_DRIVER_POS_FRAME_SEQUENCY]); // We don't handle
@@ -2650,7 +2631,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for multiframe CANAL message frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Multiframe CANAL message frame\n");
+      spdlog::trace("Multiframe CANAL message frame");
 
       m_activity = getClockMilliSeconds(); // activity
 
@@ -2746,7 +2727,7 @@ CCan4VSCPObj::readSerialData(void)
         // No room in receive queue
         else {
 
-          spdlog::trace("Overrun\n");
+          spdlog::trace("Overrun");
 
           // Full buffer
           m_stat.cntOverruns++;
@@ -2760,7 +2741,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for multiframe CANAL message frame with timestamp
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_MULTI_FRAME_CANAL_TIMESTAMP == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Multiframe CANAL message frame with timestamp\n");
+      spdlog::trace("Multiframe CANAL message frame with timestamp");
       m_activity = getClockMilliSeconds(); // activity
 
       // CANAL message structure:
@@ -2872,7 +2853,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for sent ACK frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_SENT_ACK == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Sent ACK frame\n");
+      spdlog::trace("Sent ACK frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
@@ -2880,7 +2861,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for sent NACK frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_SENT_NACK == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Sent NACK frame\n");
+      spdlog::trace("Sent NACK frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
@@ -2888,7 +2869,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for ACK frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ACK == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("ACK frame\n");
+      spdlog::trace("ACK frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
@@ -2896,7 +2877,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for NACK frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_NACK == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("NACK frame\n");
+      spdlog::trace("NACK frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
@@ -2904,7 +2885,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for ERROR frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_ERROR == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("ERROR frame\n");
+      spdlog::trace("ERROR frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
@@ -2912,7 +2893,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for command reply frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND_REPLY == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Command reply frame\n");
+      spdlog::trace("Command reply frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
@@ -2920,7 +2901,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check for capabilities response frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_CAPS_RESPONSE == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Capabilities response frame\n");
+      spdlog::trace("Capabilities response frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
@@ -2928,7 +2909,7 @@ CCan4VSCPObj::readSerialData(void)
     // Check if command frame
     else if (VSCP_SERIAL_DRIVER_FRAME_TYPE_COMMAND == (m_bufferMsgRcv[0])) {
 
-      spdlog::trace("Command frame\n");
+      spdlog::trace("Command frame");
 
       m_activity = getClockMilliSeconds(); // activity
       addToResponseQueue();
