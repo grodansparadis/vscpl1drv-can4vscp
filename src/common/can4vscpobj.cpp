@@ -812,6 +812,7 @@ CCan4VSCPObj::cleanup()
 int
 CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 {
+  int rv;
   char szDrvParams[PATH_MAX] = {0}; // Driver config string
   char *p = NULL;
 
@@ -933,7 +934,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
     We always create the file debug and the udp debug channels
     We set either to off depending on the configuration flags.
   */
-  try {
+  /* try {
 
     if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG) {
 
@@ -992,12 +993,15 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   catch (const spdlog::spdlog_ex &ex) {
     // Fallback error handling if initialization fails
     spdlog::error("Log initialization failed: {}", ex.what());
-  }
+  } */
 
   spdlog::debug("[vscpl1drv-can4vscp] About to open serial interface.");
   spdlog::flush_all();
-  
-  OpenSerialInterface();
+
+  if (VSCP_ERROR_SUCCESS != (rv = OpenSerialInterface() )) {
+    spdlog::error("[vscpl1drv-can4vscp] Failed to open serial interface.");
+    return rv;
+  }
 
   //----------------------------------------------------------------------
   //
