@@ -33,6 +33,9 @@
 #define NOMINMAX
 #endif
 
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
 
 #include <windows.h>
 #if _MSC_VER > 1000

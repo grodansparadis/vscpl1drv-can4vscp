@@ -394,11 +394,6 @@ CCan4VSCPObj::~CCan4VSCPObj()
     close();
   }
 
-  // Close the signal file descriptor if it was created
-  if (m_sfd >= 0) {
-    ::close(m_sfd);
-  }
-
   cleanup();
 }
 
@@ -544,6 +539,9 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   int rv;
   char szDrvParams[PATH_MAX] = { 0 }; // Driver config string
   char *p                    = NULL;
+  #ifdef WIN32
+  int nComPort = 1; // Default COM port for Windows
+  #endif
 
   spdlog::debug("[vscpl1drv-can4vscp] Opening CAN4VSCP driver with config: {}", pConfig ? pConfig : "NULL");
 
@@ -1064,14 +1062,14 @@ CCan4VSCPObj::OpenSerialInterface(void)
 {
   spdlog::debug("[vscpl1drv-can4vscp] Entering OpenSerialInterface.");
 
-  char szDrvParams[PATH_MAX];
 
 #ifdef WIN32
   int nComPort = 1; // COM1 is default
   char szDrvParams[MAX_PATH];
   DWORD baud = 115200;
 #else
-  char *pDeviceName = (char *) "/dev/ttyUSB0";
+  char szDrvParams[PATH_MAX];
+  strncpy(szDrvParams, "/dev/ttyUSB0", PATH_MAX);
   char szBaud[PATH_MAX];
   strcpy(szBaud, "115200");
 #endif
@@ -1212,12 +1210,12 @@ CCan4VSCPObj::OpenSerialInterface(void)
   //----------------------------------------------------------------------
   // Open Serial Port
   //----------------------------------------------------------------------
-  if (!m_com.open(pDeviceName)) {
-    spdlog::error("[vscpl1drv-can4vscp] Open [{}] failed: {}", pDeviceName, strerror(errno));
+  if (!m_com.open(szDrvParams)) {
+    spdlog::error("[vscpl1drv-can4vscp] Open [{}] failed: {}", szDrvParams, strerror(errno));
     return CANAL_ERROR_INIT_FAIL;
   }
 
-  spdlog::debug("[vscpl1drv-can4vscp] Open of port [{}] successful", pDeviceName);
+  spdlog::debug("[vscpl1drv-can4vscp] Open of port [{}] successful", szDrvParams);
 
   //----------------------------------------------------------------------
   // Com::setParam( char *baud, char *parity, char *bits, int HWFlow, int SWFlow
