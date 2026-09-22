@@ -995,13 +995,13 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   }
 
   spdlog::debug("[vscpl1drv-can4vscp] About to open serial interface.");
+  spdlog::flush_all();
+  
   OpenSerialInterface();
 
   //----------------------------------------------------------------------
   //
   //----------------------------------------------------------------------
-  // m_receiveBuf[ 0 ] = 0;
-  // m_cntRcv = 0;
 
   // Initiate statistics
   m_stat.cntReceiveData    = 0;
