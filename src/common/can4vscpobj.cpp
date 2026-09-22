@@ -923,7 +923,6 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   p = nextConfigToken(&pCursor);
 #ifndef WIN32
   gSyslogLevel = parseLogLevel(p);
-  spdlog::debug("[vscpl1drv-can4vscp] Using syslog level: {}", gSyslogLevel);
 #endif
 
   /*!
@@ -1404,7 +1403,7 @@ int
 CCan4VSCPObj::OpenSerialInterface(void)
 {
   spdlog::debug("[vscpl1drv-can4vscp] Entering OpenSerialInterface.");
-{
+
   char szDrvParams[PATH_MAX];
 
 #ifdef WIN32
