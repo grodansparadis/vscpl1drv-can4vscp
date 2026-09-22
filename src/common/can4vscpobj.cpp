@@ -1555,7 +1555,7 @@ CCan4VSCPObj::OpenSerialInterface(void)
 
   // if open we have noting to do
   if (0 != m_com.getFD()) {
-    spdlog::error("[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
+    spdlog::warn("[vscpl1drv-can4vscp] Serial port is already open. Aborting! ");
     return CANAL_ERROR_SUCCESS;
   }
 
@@ -1563,7 +1563,7 @@ CCan4VSCPObj::OpenSerialInterface(void)
   // Open Serial Port
   //----------------------------------------------------------------------
   if (!m_com.open(pDeviceName)) {
-    spdlog::error("[vscpl1drv-can4vscp] Open [{}] failed", pDeviceName);
+    spdlog::error("[vscpl1drv-can4vscp] Open [{}] failed: {}", pDeviceName, strerror(errno));
     return CANAL_ERROR_INIT_FAIL;
   }
 
