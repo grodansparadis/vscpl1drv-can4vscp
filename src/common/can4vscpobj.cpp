@@ -382,11 +382,6 @@ CCan4VSCPObj::CCan4VSCPObj()
   dll_init(&m_receiveList, SORT_NONE);
   dll_init(&m_responseList, SORT_NONE);
 
-  // SIGPIPE handling via signalfd
-  sigset_t mask;
-  sigemptyset(&mask);
-  sigaddset(&mask, SIGPIPE);
-
 }
 
 //////////////////////////////////////////////////////////////////////
