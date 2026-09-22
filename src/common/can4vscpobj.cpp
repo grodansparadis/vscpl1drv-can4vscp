@@ -815,12 +815,15 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   char szDrvParams[PATH_MAX] = {0}; // Driver config string
   char *p = NULL;
 
+  spdlog::debug("[vscpl1drv-can4vscp] Opening CAN4VSCP driver with config: {}", pConfig ? pConfig : "NULL");
+
   cmdResponseMsg Msg;
   m_nBaud    = SET_BAUDRATE_115200;
   m_initFlag = flags;
 
   // Enable strict mode if asked to
   if (flags & CAN4VSCP_FLAG_ENABLE_STRICT) {
+    spdlog::debug("[vscpl1drv-can4vscp] Strict mode enabled.");
     m_bStrict = true;
   }
 
@@ -837,17 +840,21 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 #ifdef WIN32
   if (NULL != pConfig) {
     strncpy(szDrvParams, pConfig, MAX_PATH);
+    spdlog::debug("[vscpl1drv-can4vscp] Using driver config string: {}", szDrvParams);
   }
   else {
     strncpy(szDrvParams, "COM1;0", MAX_PATH); // Use default port
+    spdlog::debug("[vscpl1drv-can4vscp] Using default driver config string: {}", szDrvParams);
   }
   strupr(szDrvParams);
 #else
   if (NULL != pConfig) {
     strncpy(szDrvParams, pConfig, PATH_MAX);
+    spdlog::debug("[vscpl1drv-can4vscp] Using driver config string: {}", szDrvParams);
   }
   else {
     strncpy(szDrvParams, "/dev/ttyUSB0;0", PATH_MAX); // Use default port
+    spdlog::debug("[vscpl1drv-can4vscp] Using default driver config string: {}", szDrvParams);
   }
 #endif
 
@@ -863,6 +870,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 
   // if open we have noting to do
   if (m_bRun) {
+    spdlog::debug("[vscpl1drv-can4vscp] Driver already running, open operation skipped.");
     return CANAL_ERROR_SUCCESS;
   }
 
@@ -876,9 +884,11 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 #ifdef WIN32
     if (NULL != (p = strstr(p, "COM"))) {
       nComPort = atoi(p + 3);
+      spdlog::debug("[vscpl1drv-can4vscp] Using COM port: {}", nComPort);
     }
 #else
     m_pdeviceName = p;
+    spdlog::debug("[vscpl1drv-can4vscp] Using device name: {}", m_pdeviceName);
 #endif
   }
 
@@ -890,6 +900,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       m_nBaud = SET_BAUDRATE_115200;
     }
   }
+  spdlog::debug("[vscpl1drv-can4vscp] Using baud rate: {}", m_nBaud);
 
   // Optional UDP debug target "udphost[:udpport]"
   char udpHost[256]      = { 0 };
@@ -906,11 +917,13 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       }
     }
   }
+  spdlog::debug("[vscpl1drv-can4vscp] Using UDP debug target: {}:{}", udpHost, udpPort);
 
   // Optional syslog level (Linux only), default "info"
   p = nextConfigToken(&pCursor);
 #ifndef WIN32
   gSyslogLevel = parseLogLevel(p);
+  spdlog::debug("[vscpl1drv-can4vscp] Using syslog level: {}", gSyslogLevel);
 #endif
 
   /*!
@@ -976,6 +989,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
     std::printf("Log initialization failed: %s\n", ex.what());
   }
 
+  spdlog::debug("[vscpl1drv-can4vscp] Opening serial interface.");
   OpenSerialInterface();
 
   //----------------------------------------------------------------------
@@ -1389,6 +1403,8 @@ CCan4VSCPObj::softOpen()
 int
 CCan4VSCPObj::OpenSerialInterface(void)
 {
+  spdlog::debug("[vscpl1drv-can4vscp] Entering OpenSerialInterface.");
+{
   char szDrvParams[PATH_MAX];
 
 #ifdef WIN32
@@ -1523,6 +1539,7 @@ CCan4VSCPObj::OpenSerialInterface(void)
                   NOPARITY,
                   ONESTOPBIT,
                   (m_initFlag & CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE) ? HANDSHAKE_HARDWARE : HANDSHAKE_NONE)) {
+    spdlog::error("[vscpl1drv-can4vscp] Initializing COM port {} with baud rate {}", nComPort, CBR_115200);
     return CANAL_ERROR_INIT_FAIL;
   }
 #else
