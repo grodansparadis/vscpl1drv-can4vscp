@@ -929,8 +929,6 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   gSyslogLevel = parseLogLevel(p);
 #endif
 
-  spdlog::debug("[vscpl1drv-can4vscp] Starting debug and logging setup.");
-
   /*!
     We always create the file debug and the udp debug channels
     We set either to off depending on the configuration flags.
@@ -938,6 +936,8 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   try {
 
     if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG) {
+
+      spdlog::debug("[vscpl1drv-can4vscp] Starting debug and logging setup.");
 
       // Create the File Sink
       fs::path log_path = get_log_file_path();
