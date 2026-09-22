@@ -95,201 +95,9 @@ setup_signal_handler()
 }
 #endif
 
-///////////////////////////////////////////////////////////////////////////////
-// get_log_file_path
-//
-// Returns the target log path based on OS platform
-//
 
-fs::path
-get_log_file_path()
-{
-#if defined(__linux__)
-  // Explicit fixed path for Linux
-  fs::path base_dir = "/var/log/vscp";
-#else
-  // Resolves to %TEMP%/vscp on Windows or /tmp/vscp on macOS
-  fs::path base_dir = fs::temp_directory_path() / "vscp";
-#endif
 
-  // Ensure target directory exists before file creation
-  std::error_code ec;
-  fs::create_directories(base_dir, ec);
 
-  return base_dir / "vscp.log";
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// can4vscpDebugStamp
-//
-// Timestamped logging to the receive debug file (m_flog).
-//
-
-// static void
-// can4vscpDebugStamp(FILE *pf)
-// {
-// #ifdef WIN32
-//   SYSTEMTIME st;
-//   GetLocalTime(&st);
-//   fprintf(pf,
-//           "%04u-%02u-%02u %02u:%02u:%02u.%03u ",
-//           st.wYear,
-//           st.wMonth,
-//           st.wDay,
-//           st.wHour,
-//           st.wMinute,
-//           st.wSecond,
-//           st.wMilliseconds);
-// #else
-//   timeval tv;
-//   gettimeofday(&tv, NULL);
-//   struct tm tmnow;
-//   localtime_r(&tv.tv_sec, &tmnow);
-//   char tbuf[32];
-//   strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &tmnow);
-//   fprintf(pf, "%s.%03ld ", tbuf, (long) (tv.tv_usec / 1000));
-// #endif
-// }
-
-// #define spdlog::trace(...) \
-//   do { \
-//     if (NULL != m_flog) { \
-//       can4vscpDebugStamp(m_flog); \
-//       spdlog::trace( __VA_ARGS__); \
-//       fflush(m_flog); \
-//     } \
-//   } while (0)
-
-namespace {
-
-///////////////////////////////////////////////////////////////////////////////
-// UdpDebugSink
-//
-// Sends driver debug output as UDP datagrams to a configurable target
-//
-
-class UdpDebugSink {
-public:
-  bool open(const char *host, unsigned short port)
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    closeUnlocked();
-
-    memset(&m_addr, 0, sizeof(m_addr));
-    m_addr.sin_family = AF_INET;
-    m_addr.sin_port   = htons(port);
-
-#ifdef WIN32
-    WSADATA wsaData;
-    if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-      return false;
-    }
-    m_bWsaInit       = true;
-    unsigned long ip = inet_addr(host);
-    if (INADDR_NONE == ip) {
-      hostent *phe = gethostbyname(host);
-      if ((NULL == phe) || (NULL == phe->h_addr_list[0])) {
-        closeUnlocked();
-        return false;
-      }
-      memcpy(&m_addr.sin_addr, phe->h_addr_list[0], sizeof(m_addr.sin_addr));
-    }
-    else {
-      m_addr.sin_addr.s_addr = ip;
-    }
-    m_sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (INVALID_SOCKET == m_sock) {
-      closeUnlocked();
-      return false;
-    }
-#else
-    addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family   = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
-    addrinfo *pres    = NULL;
-    if ((0 != getaddrinfo(host, NULL, &hints, &pres)) || (NULL == pres)) {
-      return false;
-    }
-    memcpy(&m_addr.sin_addr, &(reinterpret_cast<sockaddr_in *>(pres->ai_addr))->sin_addr, sizeof(m_addr.sin_addr));
-    freeaddrinfo(pres);
-    m_sock = ::socket(AF_INET, SOCK_DGRAM, 0);
-    if (m_sock < 0) {
-      m_sock = -1;
-      return false;
-    }
-#endif
-    return true;
-  }
-
-  void close()
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    closeUnlocked();
-  }
-
-  bool isOpen()
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-#ifdef WIN32
-    return (INVALID_SOCKET != m_sock);
-#else
-    return (-1 != m_sock);
-#endif
-  }
-
-  void send(const std::string &msg)
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-#ifdef WIN32
-    if (INVALID_SOCKET == m_sock) {
-      return;
-    }
-    (void) ::sendto(m_sock,
-                    msg.c_str(),
-                    static_cast<int>(msg.size()),
-                    0,
-                    reinterpret_cast<const sockaddr *>(&m_addr),
-                    sizeof(m_addr));
-#else
-    if (-1 == m_sock) {
-      return;
-    }
-    (void) ::sendto(m_sock, msg.c_str(), msg.size(), 0, reinterpret_cast<const sockaddr *>(&m_addr), sizeof(m_addr));
-#endif
-  }
-
-private:
-  void closeUnlocked()
-  {
-#ifdef WIN32
-    if (INVALID_SOCKET != m_sock) {
-      closesocket(m_sock);
-      m_sock = INVALID_SOCKET;
-    }
-    if (m_bWsaInit) {
-      WSACleanup();
-      m_bWsaInit = false;
-    }
-#else
-    if (-1 != m_sock) {
-      ::close(m_sock);
-      m_sock = -1;
-    }
-#endif
-  }
-
-  std::mutex m_mutex;
-  sockaddr_in m_addr;
-#ifdef WIN32
-  SOCKET m_sock   = INVALID_SOCKET;
-  bool m_bWsaInit = false;
-#else
-  int m_sock = -1;
-#endif
-};
-
-UdpDebugSink gUdpDebugSink;
 
 ///////////////////////////////////////////////////////////////////////////////
 // nextConfigToken
@@ -481,7 +289,7 @@ semaphoreDestroy(vscp_sem_t *psem)
 }
 #endif
 
-} // namespace
+
 
 // Prototypes
 #ifdef WIN32
@@ -796,16 +604,6 @@ CCan4VSCPObj::cleanup()
 //  0  - Try to continue even if errors occurs.
 //  1  - Strict mode. Give up on all errors.
 //
-// bit 30
-// ======
-//  0  - No UDP debug output
-//  1  - Send debug output as UDP datagrams (default target 127.0.0.1:9999,
-//       override with udphost[:udpport] in the configuration string)
-//
-// bit 31
-// ======
-//  0  - No debug logging
-//  1  - Debug logging (spdlog debug)
 
 int
 CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
