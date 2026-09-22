@@ -72,8 +72,6 @@ typedef sem_t vscp_sem_t;
 #define CAN4VSCP_FLAG_ENABLE_HARDWARE_HANDSHAKE    0x00000020
 #define CAN4VSCP_FLAG_ENABLE_REOPEN                0x00000040
 #define CAN4VSCP_FLAG_ENABLE_STRICT                0x00000080
-#define CAN4VSCP_FLAG_ENABLE_UDP_DEBUG             0x40000000 // Enable udp debug
-#define CAN4VSCP_FLAG_ENABLE_DEBUG                 0x80000000 // Enable debug
 
 // Default target port for UDP debug output
 #define CAN4VSCP_UDP_DEBUG_DEFAULT_PORT 9999
@@ -692,19 +690,6 @@ public:
   */
   bool m_bStrict;
 
-  /*!
-      Write debug messages using spdlog debug
-      if bit 31 is set in initflags.
-  */
-  bool m_bDebug;
-
-  /*!
-      Mirror debug messages as UDP datagrams to a
-      configurable host:port if bit 30 is set in initflags
-      or a UDP debug target is given in the configuration
-      string.
-  */
-  bool m_bUdpDebug;
 
 #ifdef WIN32
   CComm m_com;

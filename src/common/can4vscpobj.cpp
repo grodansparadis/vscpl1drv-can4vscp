@@ -554,9 +554,7 @@ CCan4VSCPObj::CCan4VSCPObj()
 
   m_bRun      = false;
   m_bOpen     = false;
-  m_bDebug    = false;
   m_bStrict   = false;
-  m_bUdpDebug = false;
 
   m_RxMsgState    = INCOMING_STATE_NONE;
   m_RxMsgSubState = INCOMING_SUBSTATE_NONE;
@@ -569,7 +567,7 @@ CCan4VSCPObj::CCan4VSCPObj()
 
 #ifdef WIN32
 
-  m_pdeviceName = "COM1";   // Set default device name
+  m_pdeviceName = "COM1"; // Set default device name
 
   m_hTreadReceive  = 0;
   m_hTreadTransmit = 0;
@@ -596,7 +594,7 @@ CCan4VSCPObj::CCan4VSCPObj()
 
 #else
 
-  m_pdeviceName = "/dev/ttyUSB0";   // Set default device name
+  m_pdeviceName = "/dev/ttyUSB0"; // Set default device name
 
   pthread_mutex_init(&m_can4vscpMutex, NULL);
   pthread_mutex_init(&m_receiveMutex, NULL);
@@ -813,8 +811,8 @@ int
 CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 {
   int rv;
-  char szDrvParams[PATH_MAX] = {0}; // Driver config string
-  char *p = NULL;
+  char szDrvParams[PATH_MAX] = { 0 }; // Driver config string
+  char *p                    = NULL;
 
   spdlog::debug("[vscpl1drv-can4vscp] Opening CAN4VSCP driver with config: {}", pConfig ? pConfig : "NULL");
 
@@ -826,12 +824,6 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   if (flags & CAN4VSCP_FLAG_ENABLE_STRICT) {
     spdlog::debug("[vscpl1drv-can4vscp] Strict mode enabled.");
     m_bStrict = true;
-  }
-
-  // Enable debug messges if asked to
-  if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG) {
-    spdlog::debug("[vscpl1drv-can4vscp] Debug mode enabled.");
-    m_bDebug = true;
   }
 
   m_RxMsgState    = INCOMING_STATE_NONE;
@@ -932,7 +924,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
 
   spdlog::debug("[vscpl1drv-can4vscp] About to open serial interface.");
 
-  if (VSCP_ERROR_SUCCESS != (rv = OpenSerialInterface() )) {
+  if (VSCP_ERROR_SUCCESS != (rv = OpenSerialInterface())) {
     spdlog::error("[vscpl1drv-can4vscp] Failed to open serial interface.");
     return rv;
   }
@@ -960,7 +952,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
     rw = m_com.writebuf((unsigned char *) "SET MODE VSCP\r\n",
                         15); // we set CAN4VSCP mode twice
 #else
-
+    spdlog::debug("[vscpl1drv-can4vscp] Setting CAN4VSCP mode on serial interface.");
     m_com.comm_puts((char *) "\r", 1, true);
     m_com.comm_puts((char *) "\r\n", 1, true);
     m_com.comm_puts((char *) "set mode vscp\r\n", 15,
@@ -1002,6 +994,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       (m_hTreadTransmit = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) workThreadTransmit, this, 0, &threadId))) {
     // Failure
     close();
+    spdlog::error("[vscpl1drv-can4vscp] Failed to create CAN4VSCP write thread.");
     return CANAL_ERROR_INIT_FAIL;
   }
 
@@ -1010,6 +1003,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       (m_hTreadReceive = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) workThreadReceive, this, 0, &threadId))) {
     // Failure
     close();
+    spdlog::error("[vscpl1drv-can4vscp] Failed to create CAN4VSCP read thread.");
     return CANAL_ERROR_INIT_FAIL;
   }
 
@@ -1046,9 +1040,11 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   for (int i = 0; i < 3; i++) {
 
     // saveseq = m_sequencyno;    // Save the sequence ordinal
+    spdlog::debug("[vscpl1drv-can4vscp] Sending NOOP command to check for CAN4VSCP device.");
     if (sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_NOOP, NULL, 0, &Msg, 500)) {
 
       bFound = true;
+      spdlog::debug("[vscpl1drv-can4vscp] CAN4VSCP device found.");
       break;
     }
 
@@ -1058,45 +1054,48 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   // Give up if not found
   if (!bFound) {
     // Failure
-    spdlog::error("[vscpl1drv-can4vscp] NOOP initial command test failed.");
+    spdlog::error("[vscpl1drv-can4vscp] NOOP initial command test failed. CAN4VSCP device not found.");
     if (m_bStrict) {
       close();
       return CANAL_ERROR_INIT_FAIL;
     }
   }
   else {
-    if (m_bDebug) {
-      spdlog::debug("[vscpl1drv-can4vscp] NOOP initial command test success.");
-    }
+    spdlog::debug("[vscpl1drv-can4vscp] NOOP initial command test success.");
   }
 
   m_bOpen = true;
 
   // Get capabilities of device
   // We skip response and use defaults if call is not successful
+  spdlog::debug("[vscpl1drv-can4vscp] Getting device capabilities.");
   getDeviceCapabilities();
 
   // If timestamp needs to be enabled we enabled it here
   if (m_initFlag & CAN4VSCP_FLAG_ENABLE_TIMESTAMP) {
 
+    spdlog::debug("[vscpl1drv-can4vscp] Enabling timestamp.");
+
     uint8_t conf = 1;
+    spdlog::debug("[vscpl1drv-can4vscp] Sending timestamp enable command.");
     if (!sendConfigWait(VSCP_DRIVER_CONFIG_TIMESTAMP, &conf, 1, &Msg, 500)) {
       // Failure
       spdlog::error("[vscpl1drv-can4vscp] Enable of timestamp failed.");
       if (m_bStrict) {
         close();
+        spdlog::debug("[vscpl1drv-can4vscp] Strict mode: Closing device due to timestamp enable failure.");
         return CANAL_ERROR_INIT_FAIL;
       }
     }
     else {
-      if (m_bDebug) {
-        spdlog::debug("[vscpl1drv-can4vscp] Enable of timestamp success.");
-      }
+      spdlog::debug("[vscpl1drv-can4vscp] Enable of timestamp success.");
     }
   }
 
   // If non standard baudrate we change it here
   if (SET_BAUDRATE_115200 != m_nBaud) {
+
+    spdlog::debug("[vscpl1drv-can4vscp] Sending CAN bitrate configuration command. Baudrate: {}", m_nBaud);
 
     uint8_t conf = m_nBaud;
     if (!sendConfigWait(VSCP_DRIVER_CONFIG_BAUDRATE, &conf, 1, &Msg, 500)) {
@@ -1104,35 +1103,36 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       spdlog::error("[vscpl1drv-can4vscp] Config of CAN bitrate failed.");
       if (m_bStrict) {
         close();
+        spdlog::debug("[vscpl1drv-can4vscp] Strict mode: Closing device due to CAN bitrate configuration failure.");
         return CANAL_ERROR_INIT_FAIL;
       }
     }
     else {
-      if (m_bDebug) {
-        spdlog::debug("[vscpl1drv-can4vscp] Config of CAN bitrate success.");
-      }
+      spdlog::debug("[vscpl1drv-can4vscp] Config of CAN bitrate success.");
     }
   }
 
   // Wait for ACK
   if (m_initFlag & CAN4VSCP_FLAG_ENABLE_WAIT_FOR_ACK) {}
 
+  spdlog::debug("[vscpl1drv-can4vscp] Waiting for ACK if enabled.");
+
   // Set interface in requested mode.
   switch (m_initFlag & 0x03) {
 
     case 1:
+      spdlog::debug("[vscpl1drv-can4vscp] Setting interface to listen mode.");
       if (!sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_LISTEN, NULL, 0, &Msg, 1000)) {
         // Failure
         spdlog::error("[vscpl1drv-can4vscp] Failed to open device in listen mode");
         if (m_bStrict) {
           close();
+          spdlog::debug("[vscpl1drv-can4vscp] Strict mode: Closing device due to listen mode open failure.");
           return CANAL_ERROR_INIT_FAIL;
         }
       }
       else {
-        if (m_bDebug) {
-          spdlog::debug("[vscpl1drv-can4vscp] Open listen mode success.");
-        }
+        spdlog::debug("[vscpl1drv-can4vscp] Open listen mode success.");
       }
       break;
 
@@ -1142,13 +1142,13 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
         spdlog::error("[vscpl1drv-can4vscp] Failed to open device in loopback mode.");
         if (m_bStrict) {
           close();
+          spdlog::debug("[vscpl1drv-can4vscp] Strict mode: Closing device due to loopback mode open failure.");
           return CANAL_ERROR_INIT_FAIL;
         }
       }
       else {
-        if (m_bDebug) {
-          spdlog::debug("[vscpl1drv-can4vscp] Open loopback mode success.");
-        }
+
+        spdlog::debug("[vscpl1drv-can4vscp] Open loopback mode success.");
       }
       break;
 
@@ -1159,21 +1159,17 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
         spdlog::error("[vscpl1drv-can4vscp] Failed to open device in standard mode.");
         if (m_bStrict) {
           close();
+          spdlog::debug("[vscpl1drv-can4vscp] Strict mode: Closing device due to standard mode open failure.");
           return CANAL_ERROR_INIT_FAIL;
         }
       }
       else {
-        if (m_bDebug) {
-          spdlog::debug("[vscpl1drv-can4vscp] Open standard mode success.");
-        }
+        spdlog::debug("[vscpl1drv-can4vscp] Open standard mode success.");
       }
       break;
   }
 
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Open success");
-  }
-
+  spdlog::debug("[vscpl1drv-can4vscp] Open procedure completed.");
   return CANAL_ERROR_SUCCESS;
 }
 
@@ -1186,15 +1182,15 @@ CCan4VSCPObj::close(void)
 {
   cmdResponseMsg Msg;
 
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Closing driver");
-  }
+  spdlog::debug("[vscpl1drv-can4vscp] Closing driver");
 
   // Do nothing if already terminated
   if (!m_bRun) {
+    spdlog::warn("[vscpl1drv-can4vscp] Driver already terminated.");
     return CANAL_ERROR_SUCCESS;
   }
 
+  spdlog::debug("[vscpl1drv-can4vscp] Sending close command to the device.");
   sendCommandWait(VSCP_CAN4VSCP_DRIVER_COMMAND_CLOSE, NULL, 0, &Msg, 1000);
 
   m_bRun  = false;
@@ -1211,13 +1207,13 @@ CCan4VSCPObj::close(void)
   semaphorePost(&m_transmitDataPutSem);
   semaphorePost(&m_transmitDataGetSem);
   semaphorePost(&m_transmitAckNackSem);
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
-  }
+
+  spdlog::debug("[vscpl1drv-can4vscp] Closing driver: Semaphores released.");
 #endif
 
   // Wait for the worker threads to terminate before any resource
   // they use is released
+  spdlog::debug("[vscpl1drv-can4vscp] Closing driver: Waiting for threads to terminate.");
 #ifdef WIN32
   DWORD rv;
 
@@ -1236,34 +1232,23 @@ CCan4VSCPObj::close(void)
       break;
     SLEEP(1);
   }
+
 #else
   pthread_join(m_threadIdReceive, NULL);
   pthread_join(m_threadIdTransmit, NULL);
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Closing driver: Threads joined.");
-  }
+  spdlog::debug("[vscpl1drv-can4vscp] Closing driver: Threads joined.");
 #endif
 
   // Close the com port if its open
   if (m_com.isOpen()) {
+    spdlog::debug("[vscpl1drv-can4vscp] Closing driver: Closing channel.");
     m_com.close();
-    if (m_bDebug) {
-      spdlog::debug("[vscpl1drv-can4vscp] Closing driver: channel closed.");
-    }
+    spdlog::debug("[vscpl1drv-can4vscp] Closing driver: Channel closed.");
   }
 
   // Mutexes/semaphores are destroyed in the destructor so the
   // channel can be reopened after close
-
-  if (m_bDebug) {
-    spdlog::debug("[vscpl1drv-can4vscp] Driver close success");
-  }
-
-  // Shut down UDP debug output
-  if (m_bUdpDebug) {
-    gUdpDebugSink.close();
-    m_bUdpDebug = false;
-  }
+  spdlog::debug("[vscpl1drv-can4vscp] Driver close success.");
 
   return CANAL_ERROR_SUCCESS;
 }
@@ -3082,9 +3067,8 @@ transmitMessage(CCan4VSCPObj *pobj, uint8_t *pseq)
     return false;
   }
 
-  if (pobj->m_bDebug) {
     spdlog::debug("[vscpl1drv-can4vscp] transmitMessage");
-  }
+  
 
   // Must be a message to transmit - fetch a copy under lock
   LOCK_MUTEX(pobj->m_transmitMutex);
@@ -3344,9 +3328,9 @@ workThreadTransmit(void *pObject)
   ExitThread(errorCode);
 #else
   rv = 0xaa;
-  if (pobj->m_bDebug) {
+
     spdlog::debug("[vscpl1drv-can4vscp] TX thread terminating");
-  }
+  
   pthread_exit(&rv);
 #endif
 }
@@ -3394,9 +3378,9 @@ workThreadReceive(void *pObject)
   ExitThread(errorCode);
 #else
   rv = 0x55;
-  if (pobj->m_bDebug) {
+
     spdlog::debug("[vscpl1drv-can4vscp] RX thread terminating");
-  }
+  
   pthread_exit(&rv);
 #endif
 }
