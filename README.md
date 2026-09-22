@@ -29,22 +29,26 @@ vscpl1drv-can4vscp.so
 
 vscpl1drv-can4vscp.dll 
 
+## Driver frp MacOS
+
+vscpl1drv-can4vscp.dylib
+
 ## Install location
 
-### Linux
+### Linux & MacOS
 
-From version 14.0.0 the driver is installed in */var/lib/vscp/drivers/level1*
+The driver is installed in */var/lib/vscp/drivers/level1*
 
 ### Windows
 
-From version 14.0.0 the driver is installed in */program files/vscpd/drivers/level1*
+The driver is installed in */program files/vscpd/drivers/level1*
 
 ## Configuration string - Windows
 
 All level I drivers are configured using a semicolon separated configuration string.
 
 ```bash
-port[;nBaud[;udphost[:udpport]]]
+port[;nBaud]
 ```
 
 ### port
@@ -57,16 +61,13 @@ This parameter is mandatory.
 
 The second parameter is the serial baudrate and defaults to **5** which is the code for 115200 Baud.
 
-### udphost[:udpport]
 
-The third parameter is optional and enables [UDP debugging](#debugging). If given, all driver debug output is also sent as UDP datagrams to this host. The port defaults to **9999**.
-
-## Configuration string -  Linux
+## Configuration string -  Linux & MacOS
 
 All level I drivers are configured using a semicolon separated configuration string.
 
 ```bash
-port[;nBaud[;udphost[:udpport]]]
+port[;nBaud]
 ```
 
 ### port
@@ -101,7 +102,7 @@ Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu
 
 ```xml
 <!-- The can4vscp driver -->
-<driver enable="false"
+<driver enable="true"
         name="can4vscp"
         config="/dev/ttyUSB0"
         flags="0"
@@ -115,7 +116,7 @@ Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu
 
 ```xml
 <!-- The can4vscp driver -->
-<driver enable="false"
+<driver enable="true"
         name="can4vscp"
         config="com1"
         flags="0"
@@ -135,10 +136,7 @@ Tests on Windows and Linux has been done on a Windows 10 machine and on a Ubuntu
  | Bit 4    | Enable timestamp. The timestamp will be written by the hardware instead of the driver. |
  | Bit 5    | Enable hardware handshake.  |
  | Bit 6 | Enable strict mode. Driver will terminate on all errors.  |
- | Bit 7-29 | Reserved.  |
- | Bit 30 | Enable UDP debugging (0x40000000). Debug output is sent as UDP datagrams to 127.0.0.1:9999 or to the target given as *udphost[:udpport]* in the configuration string. See [Debugging](#debugging). |
- | Bit 31 | Enable debug messages to LOG_DEBUG, syslog (0x80000000).  |
-
+ | Bit 7-31 | Reserved.  |
 
 
 ## Status return
@@ -170,6 +168,10 @@ The **CanalGetStatus** call returns the status structure with the channel_status
 
 You can find the description of the VSCP serial protocol in the [VSCP specification](https://docs.vscp.org/spec/latest/#/./vscp_over_a_serial_channel_rs-232?id=general-frame-format).
 
+## Install the driver on Windows
+
+
+
 ## Install the driver on Linux
 
 Install Debian package
@@ -178,17 +180,19 @@ Install Debian package
 > sudo apt install ./vscpl2drv-can4vscp_1.1.0-1_amd64.deb
 ```
 
-using the latest version from the repositories [release section](https://github.com/grodansparadis/vscpl1drv-can4vscp/releases).
+Or you can build it yourself using the latest version from the repositories [release section](https://github.com/grodansparadis/vscpl1drv-can4vscp/releases).
 
 or
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-sudo cmake --install build
-```
+cmake --install build
+cpack  
 
 For a debug build, use `-DCMAKE_BUILD_TYPE=Debug`.
+
+cpack only if you wnt to build install packages
 
 ### Privileges on serial port
 
@@ -278,6 +282,11 @@ cmake --build build --config Release
 cmake --install build --config Release
 ```
 
+## Install the driver on MacOS
+
+Just unpack the file vscpl1drv-can4vscp-26.09.79-Darwin-arm64.tar.gz
+
+
 ## How to build the driver on macOS
 
 ```bash
@@ -305,6 +314,8 @@ cpack --config build/CPackConfig.cmake -G TGZ
 ```
 
 The repository CI includes a Homebrew install step on macOS from the generated CPack tarball.
+
+
 
 ## Troubleshooting
 
