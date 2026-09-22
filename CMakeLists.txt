@@ -49,6 +49,10 @@ else()
     message(FATAL_ERROR "Vendored spdlog headers were not found at ${VSCP_SPDLOG_DIR}/include")
 endif()
 
+if(WIN32)
+    target_compile_definitions(vscpl1drv-can4vscp PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+endif()
+
 set(DRIVER_SOURCES
     src/common/can4vscpobj.cpp
     src/common/can4vscp-protocol.cpp

@@ -20,15 +20,6 @@
 // Boston, MA 02111-1307, USA.620
 //
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#if defined(WIN32) || defined(_WIN32)
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h>
-#endif
 
 #include "can4vscpobj.h"
 #include "dlldrvobj.h"
@@ -54,9 +45,6 @@
 #endif
 
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-// #include <spdlog/sinks/udp_sink.h>
-// #include <spdlog/sinks/null_sink.h>
 
 #include <memory>
 #include <mutex>

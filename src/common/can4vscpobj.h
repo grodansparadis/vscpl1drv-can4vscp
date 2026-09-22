@@ -25,6 +25,15 @@
 
 #ifdef WIN32
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+
 #include <windows.h>
 #if _MSC_VER > 1000
 #pragma once
