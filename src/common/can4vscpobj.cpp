@@ -985,7 +985,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   }
   catch (const spdlog::spdlog_ex &ex) {
     // Fallback error handling if initialization fails
-    std::printf("Log initialization failed: %s\n", ex.what());
+    spdlog::error("Log initialization failed: {}", ex.what());
   }
 
   spdlog::debug("[vscpl1drv-can4vscp] Opening serial interface.");
