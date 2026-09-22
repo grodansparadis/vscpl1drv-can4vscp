@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-package:
     runs-on: ubuntu-latest
+    container: ubuntu:24.04
 
     steps:
       - name: Checkout
