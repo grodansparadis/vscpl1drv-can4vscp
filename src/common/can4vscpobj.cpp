@@ -20,6 +20,16 @@
 // Boston, MA 02111-1307, USA.620
 //
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#if defined(WIN32) || defined(_WIN32)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#endif
+
 #include "can4vscpobj.h"
 #include "dlldrvobj.h"
 #include <cstdarg>
@@ -45,8 +55,8 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/udp_sink.h>
-#include <spdlog/sinks/null_sink.h>
+// #include <spdlog/sinks/udp_sink.h>
+// #include <spdlog/sinks/null_sink.h>
 
 #include <memory>
 #include <mutex>
@@ -389,11 +399,6 @@ CCan4VSCPObj::CCan4VSCPObj()
   sigemptyset(&mask);
   sigaddset(&mask, SIGPIPE);
 
-  // Block SIGPIPE from executing the default process handler
-  sigprocmask(SIG_BLOCK, &mask, nullptr);
-
-  // Create a file descriptor that receives SIGPIPE events
-  m_sfd = signalfd(-1, &mask, SFD_NONBLOCK);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -414,25 +419,7 @@ CCan4VSCPObj::~CCan4VSCPObj()
   cleanup();
 }
 
-//////////////////////////////////////////////////////////////////////
-// checkForSignalEvents
-//
-// Regular instance method called during your I/O loop
-//
 
-void
-CCan4VSCPObj::checkForSignalEvents()
-{
-  struct signalfd_siginfo fdsi;
-  ssize_t s = read(m_sfd, &fdsi, sizeof(fdsi));
-
-  if (s == sizeof(fdsi)) {
-    if (fdsi.ssi_signo == SIGPIPE) {
-      // Safely handle SIGPIPE inside your class method!
-      spdlog::critical("SIGPIPE received via signalfd in class method!\n");
-    }
-  }
-}
 
 //////////////////////////////////////////////////////////////////////
 // cleanup
@@ -2029,8 +2016,6 @@ CCan4VSCPObj::serialData2StateMachine(void)
 {
   uint8_t c; // Serial character
   int cnt = 0;
-
-  checkForSignalEvents();
 
   // Read RS-232 data
   c = m_com.readChar(&cnt);

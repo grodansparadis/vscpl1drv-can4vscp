@@ -478,11 +478,6 @@ public:
 
 private:
 
-  /*!
-      Check for signal events (e.g., SIGPIPE) using signalfd.
-      This function should be called regularly in the I/O loop.
-   */
-  void checkForSignalEvents(void);
 
   /*!
       Cleanup the object, remove all nodes from lists and destroy mutexes and semaphores.
