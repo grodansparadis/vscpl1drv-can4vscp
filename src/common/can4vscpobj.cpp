@@ -925,6 +925,8 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   gSyslogLevel = parseLogLevel(p);
 #endif
 
+  spdlog::debug("[vscpl1drv-can4vscp] Starting debug and logging setup.");
+
   /*!
     We always create the file debug and the udp debug channels
     We set either to off depending on the configuration flags.
@@ -988,7 +990,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
     spdlog::error("Log initialization failed: {}", ex.what());
   }
 
-  spdlog::debug("[vscpl1drv-can4vscp] Opening serial interface.");
+  spdlog::debug("[vscpl1drv-can4vscp] About to open serial interface.");
   OpenSerialInterface();
 
   //----------------------------------------------------------------------
