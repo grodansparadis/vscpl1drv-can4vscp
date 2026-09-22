@@ -57,45 +57,8 @@
 #include <csignal>
 #ifdef WIN32
 #else
-#include <sys/signalfd.h>
 #include <unistd.h>
 #endif
-
-namespace fs = std::filesystem;
-
-#ifndef WIN32
-
-///////////////////////////////////////////////////////////////////////////////
-// handle_sigpipe
-//
-
-void
-handle_sigpipe(int sig)
-{
-  // Keep signal handlers lightweight and async-signal-safe
-  const char msg[] = "Caught SIGPIPE: Pipe or file descriptor closed!\n";
-  write(STDERR_FILENO, msg, sizeof(msg) - 1);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// setup_signal_handler
-//
-
-void
-setup_signal_handler()
-{
-  struct sigaction sa;
-  sa.sa_handler = handle_sigpipe;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-
-  if (sigaction(SIGPIPE, &sa, NULL) < 0) {
-    perror("sigaction");
-  }
-}
-#endif
-
-
 
 
 
