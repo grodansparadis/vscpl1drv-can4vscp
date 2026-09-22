@@ -917,6 +917,10 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
       }
     }
   }
+  else {
+    spdlog::debug("[vscpl1drv-can4vscp] No UDP debug target specified, using defaults.");
+    strncpy(udpHost, "127.0.0.1", sizeof(udpHost) - 1);
+  }
   spdlog::debug("[vscpl1drv-can4vscp] Using UDP debug target: {}:{}", udpHost, udpPort);
 
   // Optional syslog level (Linux only), default "info"
