@@ -21,7 +21,7 @@ jobs:
         uses: uraimo/run-on-arch-action@460cb8e6d9f726a588fc9b5e681c8a6cab09ae41 # v3.2.0
         with:
           arch: aarch64
-          distro: ubuntu_latest
+          distro: bookworm
           githubToken: ${{ github.token }}
           dockerRunArgs: |
             --volume "${PWD}:/workspace"
