@@ -930,73 +930,7 @@ CCan4VSCPObj::open(const char *pConfig, unsigned long flags)
   gSyslogLevel = parseLogLevel(p);
 #endif
 
-  /*!
-    We always create the file debug and the udp debug channels
-    We set either to off depending on the configuration flags.
-  */
-  /* try {
-
-    if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG) {
-
-      spdlog::debug("[vscpl1drv-can4vscp] Starting debug and logging setup.");
-
-      // Create the File Sink
-      fs::path log_path = get_log_file_path();
-
-      // Log to file, truncate old contents (set second param to false to append)
-      auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);
-      file_sink->set_level(spdlog::level::trace);
-
-      std::shared_ptr<spdlog::logger> multi_logger;
-      if (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG) {
-
-        //   Create the UDP Sink
-        //   Configure host IP and Port
-        spdlog::sinks::udp_sink_config udp_config(udpHost, udpPort);
-        auto udp_sink = std::make_shared<spdlog::sinks::udp_sink_mt>(udp_config);
-        udp_sink->set_level(spdlog::level::info);
-
-        // Combine both sinks into a single logger
-        std::vector<spdlog::sink_ptr> sinks{ file_sink, udp_sink };
-        multi_logger = std::make_shared<spdlog::logger>("multi_sink", sinks.begin(), sinks.end());
-      } // if (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG)
-      else {
-        multi_logger = spdlog::basic_logger_mt("multi_sink", "logs/app.log", true);
-        spdlog::set_default_logger(multi_logger);
-        // Only file sink
-        // std::vector<spdlog::sink_ptr> sinks{ file_sink };
-        // multi_logger = std::make_shared<spdlog::logger>("multi_sink", sinks.begin(), sinks.end());
-      } // else (flags & CAN4VSCP_FLAG_ENABLE_UDP_DEBUG)
-
-      // Register logger as global default (optional)
-      spdlog::register_logger(multi_logger);
-      spdlog::set_default_logger(multi_logger);
-
-      // Set global log level
-      spdlog::set_level(gSyslogLevel);
-      spdlog::flush_on(spdlog::level::info);
-
-      // Test log messages
-      spdlog::info("Logger initialized successfully!");
-      spdlog::trace("This goes to file only (below UDP sink level filter)");
-      spdlog::error("Critical error - sent to both UDP and File!");
-    } // if (flags & CAN4VSCP_FLAG_ENABLE_DEBUG)
-    else {
-      // Debug to null sink (disable debug output)
-      // Create a logger that discards all log messages
-      auto null_logger = spdlog::null_logger_mt("null_logger");
-
-      // Set it as default (spdlog::info calls will now go to /dev/null)
-      spdlog::set_default_logger(null_logger);
-    }
-  }
-  catch (const spdlog::spdlog_ex &ex) {
-    // Fallback error handling if initialization fails
-    spdlog::error("Log initialization failed: {}", ex.what());
-  } */
-
   spdlog::debug("[vscpl1drv-can4vscp] About to open serial interface.");
-  spdlog::flush_all();
 
   if (VSCP_ERROR_SUCCESS != (rv = OpenSerialInterface() )) {
     spdlog::error("[vscpl1drv-can4vscp] Failed to open serial interface.");
