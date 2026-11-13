@@ -20,6 +20,9 @@ if(NOT VERSION_PATCH)
 endif()
 
 project(vscpl1drv-can4vscp VERSION ${VERSION_YEAR}.${VERSION_MONTH}.${VERSION_PATCH} LANGUAGES C CXX)
+
+# Third-party sources (formerly git submodules)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies.cmake)
 message(STATUS "Driver version: ${PROJECT_VERSION}")
 
 include(GNUInstallDirs)
@@ -33,10 +36,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(DRIVER_TARGET vscpl1drv-can4vscp)
 set(DRIVER_SOVERSION 1)
 
-set(VSCP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/vscp)
+set(VSCP_DIR ${THIRD_PARTY_VSCP_DIR})
 set(VSCP_COMMON_DIR ${VSCP_DIR}/src/common)
 set(VSCP_VSCP_COMMON_DIR ${VSCP_DIR}/src/vscp/common)
-set(VSCP_SPDLOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/spdlog)
+
+# src/common/com-win32.h and com_win32.h forward to VSCP's com-win32.h
+add_compile_definitions("VSCP_COM_WIN32_HEADER=\"${VSCP_COMMON_DIR}/com-win32.h\"")
+set(VSCP_SPDLOG_DIR ${THIRD_PARTY_SPDLOG_DIR})
 set(DRIVER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(EXISTS ${VSCP_SPDLOG_DIR}/include)

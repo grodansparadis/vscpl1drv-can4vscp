@@ -258,7 +258,6 @@ Install using the binary install file in the release section.
 ```bash
 git clone https://github.com/grodansparadis/vscpl1drv-can4vscp.git
 cd vscpl1drv-can4vscp
-git submodule update --init
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 cmake --install build
