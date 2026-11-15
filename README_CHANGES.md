@@ -7,6 +7,7 @@ tagged, rename **Unreleased** to the version and date, and start a new
 
 ## Unreleased
 
+- Build against the latest vscp master (d75d4f5c6)
 - Fix the CI checksum step: readable SHA256SUMS files, bash 3.2 on macOS, and jobs that run in a subfolder
 - Replace the third-party/vscp and third-party/spdlog git submodules with CMake FetchContent (same pinned commits)
 - Add scripts/download-artifacts.sh to download and verify the newest CI build artifacts
